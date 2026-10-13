@@ -172,3 +172,30 @@ export async function seedDatabase(q: Q) {
   for (const [t, e, c] of posts)
     await q("INSERT INTO blog_posts (title, slug, excerpt, content) VALUES ($1,$2,$3,$4)", [t, slugify(t), e, c]);
 }
+
+/** Sonradan eklenen özelliklerin varsayılan içerikleri (bir kez çalışır). */
+export async function seedExtras(q: Q) {
+  const done = await q<{ value: string }>("SELECT value FROM settings WHERE key = 'extras_seeded'");
+  if (done.length) return;
+  const faqs = [
+    ["Kodum ne zaman gelir?", "Otomatik teslimatlı ürünlerde kod ödeme anında Siparişlerim sayfasında görünür. Manuel ürünler ortalama 15 dakikada teslim edilir."],
+    ["Bakiye yükleme ne kadar sürer?", "Havale/EFT ve Papara bildirimleri genellikle 5-15 dakika içinde onaylanır."],
+    ["Kod çalışmıyor, ne yapmalıyım?", "Hesap bölgeni kontrol et. Sorun devam ederse sipariş numaranla destek talebi aç veya sipariş sayfasından iade talebi oluştur."],
+    ["İade alabilir miyim?", "Kullanılmamış kodlar için iade talebi açabilirsin. Onaylanan iadeler bakiyene eklenir."],
+    ["İndirim kodunu nereye yazacağım?", "Sepet sayfasındaki İndirim kodu alanına yaz ve Uygula'ya bas. İndirim toplam tutardan düşülür."],
+  ];
+  for (let i = 0; i < faqs.length; i++) await q("INSERT INTO faqs (question, answer, sort) VALUES ($1,$2,$3)", [...faqs[i], i]);
+  await q("INSERT INTO coupons (code, kind, value, min_total, max_uses) VALUES ('EPIC10', 'percent', 10, 100, 500) ON CONFLICT (code) DO NOTHING");
+  const defaults: Record<string, string> = {
+    maintenance_on: "",
+    maintenance_text: "Kısa bir bakım çalışması yapıyoruz. Birazdan buradayız.",
+    popup_on: "",
+    popup_title: "İlk siparişine özel %10 indirim",
+    popup_text: "Sepette EPIC10 kodunu kullan, 100 ₺ ve üzeri siparişlerde %10 indirim kazan.",
+    popup_link: "/ilanlar",
+    popup_button: "Alışverişe başla",
+    live_feed_on: "on",
+  };
+  for (const [k, v] of Object.entries(defaults)) await q("INSERT INTO settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO NOTHING", [k, v]);
+  await q("INSERT INTO settings (key, value) VALUES ('extras_seeded', '1') ON CONFLICT (key) DO NOTHING");
+}

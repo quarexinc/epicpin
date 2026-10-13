@@ -14,7 +14,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const { id } = await params;
   const { yeni } = await searchParams;
   const u = await requireUser(`/hesabim/siparisler/${id}`);
-  const order = await one<{ id: number; total: number; created_at: string }>("SELECT * FROM orders WHERE id = $1 AND user_id = $2", [Number(id) || 0, u.id]);
+  const order = await one<{ id: number; total: number; created_at: string; discount: number; coupon_code: string | null }>("SELECT * FROM orders WHERE id = $1 AND user_id = $2", [Number(id) || 0, u.id]);
   if (!order) notFound();
   const items = await q<{
     id: number; title: string; quantity: number; unit_price: number; status: string; delivery_type: string; delivered_content: string | null; refund_status: string | null; refund_note: string | null;
@@ -38,6 +38,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       <div className="panel flex flex-wrap items-center gap-x-8 gap-y-2 p-5">
         <h1 className="font-display text-xl font-bold">Sipariş #{order.id}</h1>
         <span className="text-sm text-mute">{dateTimeTR(order.created_at)}</span>
+        {Number(order.discount) > 0 && <span className="chip text-mint">Kupon {order.coupon_code}: -{tl(order.discount)}</span>}
         <span className="ml-auto font-display text-lg font-extrabold text-blaze">{tl(order.total)}</span>
       </div>
       {items.map((i) => {

@@ -10,17 +10,15 @@ export function Splash() {
       setGone(true);
       return;
     }
-    const t = setTimeout(() => {
-      try {
-        sessionStorage.setItem("ep_seen", "1");
-      } catch {}
-      setGone(true);
-    }, 1900);
+    try {
+      sessionStorage.setItem("ep_seen", "1");
+    } catch {}
+    const t = setTimeout(() => setGone(true), 1300);
     return () => clearTimeout(t);
   }, []);
   if (gone) return null;
   return (
-    <div id="ep-splash" aria-hidden="true" className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-void">
+    <div id="ep-splash" aria-hidden="true" onClick={() => setGone(true)} className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-void">
       <div className="ep-splash-glow absolute h-[60vmin] w-[60vmin] rounded-full bg-ember/30 blur-[90px]" />
       <div className="relative flex flex-col items-center">
         <div className="ep-splash-mark">
@@ -31,7 +29,7 @@ export function Splash() {
             <span
               key={i}
               className={`ep-splash-letter ${i >= 4 ? "bg-gradient-to-b from-blaze to-ember bg-clip-text text-transparent" : "text-bone"}`}
-              style={{ animationDelay: `${0.35 + i * 0.05}s` }}
+              style={{ animationDelay: `${0.18 + i * 0.04}s` }}
             >
               {ch}
             </span>
@@ -43,11 +41,11 @@ export function Splash() {
       </div>
       <style>{`
         html[data-seen] #ep-splash{display:none}
-        #ep-splash{animation:epOut .55s cubic-bezier(.7,0,.3,1) 1.35s forwards}
-        .ep-splash-mark{animation:epMark .8s cubic-bezier(.2,1.4,.4,1) both}
-        .ep-splash-letter{display:inline-block;animation:epUp .55s cubic-bezier(.2,.9,.3,1) both}
-        .ep-splash-bar{animation:epBar 1.15s cubic-bezier(.6,0,.2,1) .15s both}
-        .ep-splash-glow{animation:epGlow 1.4s ease-out both}
+        #ep-splash{animation:epOut .45s cubic-bezier(.7,0,.3,1) .85s forwards}
+        .ep-splash-mark{animation:epMark .6s cubic-bezier(.2,1.4,.4,1) both}
+        .ep-splash-letter{display:inline-block;animation:epUp .45s cubic-bezier(.2,.9,.3,1) both}
+        .ep-splash-bar{animation:epBar .75s cubic-bezier(.6,0,.2,1) .1s both}
+        .ep-splash-glow{animation:epGlow 1s ease-out both}
         @keyframes epMark{0%{transform:scale(.2) rotate(-60deg);opacity:0}100%{transform:none;opacity:1}}
         @keyframes epUp{0%{transform:translateY(110%);opacity:0}100%{transform:none;opacity:1}}
         @keyframes epBar{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}

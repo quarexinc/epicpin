@@ -23,12 +23,18 @@ Oyun e-pin ve dijital kod mağazası. Next.js 15, PostgreSQL ve Tailwind CSS ile
 - Manuel teslimatlı siparişleri teslim etme
 - Site ayarları: logo, favicon, site adı, üst kampanya şeridi, sosyal medya
 - Destek talepleri
+- Kuponlar: yüzde veya sabit indirim, alt limit, kullanım limiti, son kullanma tarihi
+- Bakım modu ve açılış penceresi (popup kampanya)
+- Sık sorulanlar yönetimi, WhatsApp destek butonu, canlı satış şeridi
+- Sipariş detayı ve yöneticiden iade (kodları stoğa geri alma seçeneğiyle)
+- Siparişleri ve üyeleri Excel'e (CSV) aktarma
+- İlan kopyalama, işlem kayıtları (hangi yönetici ne yaptı)
 
 ## Vercel'e yükleme
 
 1. Bu repoyu GitHub'a yükle (zaten yüklüyse geç).
 2. [vercel.com/new](https://vercel.com/new) adresinde repoyu seç ve **Deploy** de.
-3. Vercel'de projenin **Storage** sekmesinden **Neon (Postgres)** veritabanı oluştur ve projeye bağla. `DATABASE_URL` otomatik eklenir.
+3. Vercel'de projenin **Storage** sekmesinden **Neon (Postgres)** veritabanı oluştur ve projeye bağla. Bölge olarak **Frankfurt (eu-central-1)** seç: site de Frankfurt'ta çalışacak şekilde ayarlı (`vercel.json`), ikisi aynı yerde olunca sayfalar çok daha hızlı açılır. `DATABASE_URL` otomatik eklenir.
 4. **Settings → Environment Variables** bölümüne şunları ekle:
 
    | Değişken | Açıklama |

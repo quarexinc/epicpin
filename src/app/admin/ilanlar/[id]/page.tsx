@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, Trash2, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, Trash2, X, Copy } from "lucide-react";
 import { one, q } from "@/lib/db";
 import { getCategories, LISTING_SELECT, type Listing } from "@/lib/data";
-import { deleteListing, deleteStockCode } from "@/app/actions/admin";
+import { deleteListing, deleteStockCode, duplicateListing } from "@/app/actions/admin";
+import { Submit } from "@/components/FormBits";
 import { AdminTitle, Card } from "@/components/admin/Fields";
 import { ListingForm } from "@/components/admin/ListingForm";
 import { ConfirmSubmit } from "@/components/admin/Confirm";
@@ -20,8 +21,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <>
       <Link href="/admin/ilanlar" className="mb-3 inline-flex items-center gap-1.5 text-sm text-mute hover:text-bone"><ArrowLeft className="h-4 w-4" /> İlanlar</Link>
-      <AdminTitle title={l.title} sub={`#${l.id} · ${l.sold_count} satış`}>
+      <AdminTitle title={l.title} sub={`#${l.id}, ${l.sold_count} satış`}>
         <Link href={`/ilan/${l.slug}`} target="_blank" className="btn-ghost"><ExternalLink className="h-4 w-4" /> Sitede gör</Link>
+        <form action={duplicateListing}>
+          <input type="hidden" name="id" value={l.id} />
+          <Submit className="btn-ghost"><Copy className="h-4 w-4" /> Kopyala</Submit>
+        </form>
         <form action={deleteListing}>
           <input type="hidden" name="id" value={l.id} />
           <ConfirmSubmit message="Bu ilan silinsin mi? Satış geçmişi varsa pasife alınır.">

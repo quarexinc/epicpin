@@ -2,11 +2,11 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Minus, Plus, ShoppingCart, Trash2, Wallet, Zap, CircleAlert } from "lucide-react";
+import { Loader2, Minus, Plus, ShoppingCart, Trash2, Wallet, Zap, CircleAlert, TicketPercent, X } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { tl } from "@/lib/utils";
 import type { Listing } from "@/lib/data";
-import { checkoutAction, getCartListings } from "@/app/actions/user";
+import { checkoutAction, getCartListings, previewCouponAction } from "@/app/actions/user";
 import { ListingCover } from "./ListingCard";
 
 export function CartView({ user }: { user: { balance: number } | null }) {
@@ -16,6 +16,10 @@ export function CartView({ user }: { user: { balance: number } | null }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
+  const [code, setCode] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; discount: number; label: string } | null>(null);
+  const [cErr, setCErr] = useState("");
+  const [cBusy, setCBusy] = useState(false);
   const ids = cart.items.map((i) => i.id).join(",");
 
   useEffect(() => {
@@ -37,7 +41,22 @@ export function CartView({ user }: { user: { balance: number } | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missing.length]);
 
-  const total = Math.round(lines.reduce((a, b) => a + b.l.price * b.qty, 0) * 100) / 100;
+  const sub = Math.round(lines.reduce((a, b) => a + b.l.price * b.qty, 0) * 100) / 100;
+  const cartKey = cart.items.map((i) => `${i.id}:${i.qty}`).join(",");
+  // Sepet değişince kupon indirimini yeniden hesapla
+  useEffect(() => {
+    if (!coupon) return;
+    previewCouponAction(coupon.code, cart.items).then((r) => {
+      if (r.ok) setCoupon({ code: r.code, discount: r.discount, label: r.label });
+      else {
+        setCoupon(null);
+        setCErr(r.error);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey]);
+  const discount = coupon?.discount ?? 0;
+  const total = Math.round((sub - discount) * 100) / 100;
   const saved = lines.reduce((a, b) => a + (b.l.old_price && b.l.old_price > b.l.price ? (b.l.old_price - b.l.price) * b.qty : 0), 0);
   const short = user ? Math.max(0, total - user.balance) : 0;
 
@@ -92,14 +111,51 @@ export function CartView({ user }: { user: { balance: number } | null }) {
       <div className="panel sticky top-24 p-6">
         <div className="font-display text-lg font-bold">Sipariş özeti</div>
         <dl className="mt-4 grid gap-2.5 text-sm">
-          <div className="flex justify-between"><dt className="text-mute">Ürünler ({cart.count})</dt><dd>{tl(total + saved)}</dd></div>
-          {saved > 0 && <div className="flex justify-between text-mint"><dt>İndirim</dt><dd>-{tl(saved)}</dd></div>}
+          <div className="flex justify-between"><dt className="text-mute">Ürünler ({cart.count})</dt><dd>{tl(sub + saved)}</dd></div>
+          {saved > 0 && <div className="flex justify-between text-mint"><dt>Ürün indirimleri</dt><dd>-{tl(saved)}</dd></div>}
+          {coupon && (
+            <div className="flex justify-between text-mint">
+              <dt className="flex items-center gap-1.5">
+                Kupon {coupon.code}
+                <button onClick={() => setCoupon(null)} className="text-mute hover:text-plasma" aria-label="Kuponu kaldır"><X className="h-3.5 w-3.5" /></button>
+              </dt>
+              <dd>-{tl(coupon.discount)}</dd>
+            </div>
+          )}
           <div className="perforation my-2" />
           <div className="flex items-end justify-between"><dt className="font-semibold">Toplam</dt><dd className="font-display text-2xl font-extrabold text-blaze">{tl(total)}</dd></div>
         </dl>
 
+        {user && !coupon && (
+          <form
+            className="mt-5"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setCBusy(true);
+              setCErr("");
+              const r = await previewCouponAction(code, cart.items);
+              setCBusy(false);
+              if (r.ok) {
+                setCoupon({ code: r.code, discount: r.discount, label: r.label });
+                setCode("");
+              } else setCErr(r.error);
+            }}
+          >
+            <label className="label" htmlFor="coupon">İndirim kodu</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <TicketPercent className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mute" />
+                <input id="coupon" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="input pl-9 font-display text-xs font-bold uppercase tracking-wider" placeholder="EPIC10" />
+              </div>
+              <button disabled={cBusy || !code.trim()} className="btn-ghost px-4">{cBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Uygula"}</button>
+            </div>
+            {cErr && <p className="mt-1.5 text-xs text-plasma">{cErr}</p>}
+          </form>
+        )}
+        {coupon && <p className="mt-3 rounded-xl border border-mint/30 bg-mint/10 px-3 py-2 text-xs font-semibold text-mint">{coupon.code} uygulandı: {coupon.label}</p>}
+
         {user && (
-          <div className="mt-5 flex items-center justify-between rounded-xl border border-line bg-coal p-3 text-sm">
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-line bg-coal p-3 text-sm">
             <span className="flex items-center gap-2 text-mute"><Wallet className="h-4 w-4" /> Bakiyen</span>
             <span className="font-bold">{tl(user.balance)}</span>
           </div>
@@ -124,7 +180,7 @@ export function CartView({ user }: { user: { balance: number } | null }) {
             onClick={() =>
               start(async () => {
                 setError("");
-                const r = await checkoutAction(cart.items);
+                const r = await checkoutAction(cart.items, coupon?.code);
                 if (r.ok) {
                   cart.clear();
                   router.push(`/hesabim/siparisler/${r.orderId}?yeni=1`);

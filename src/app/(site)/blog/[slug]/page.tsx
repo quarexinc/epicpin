@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { one } from "@/lib/db";
-import { getPosts, type Post } from "@/lib/data";
+import { getPostBySlug, getPosts } from "@/lib/data";
 import { dateTR, img } from "@/lib/utils";
 import { PostCard } from "@/components/site/PostCard";
 
-async function get(slug: string) {
-  return one<Post>("SELECT * FROM blog_posts WHERE slug = $1 AND published", [slug]);
-}
+const get = getPostBySlug;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const p = await get((await params).slug);

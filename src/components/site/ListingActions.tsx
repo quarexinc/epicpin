@@ -13,6 +13,7 @@ export function AddToCartButton({ id, disabled, qty = 1, big = false }: { id: nu
       disabled={disabled}
       onClick={() => {
         cart.add(id, qty);
+        window.dispatchEvent(new CustomEvent("ep-toast", { detail: { kind: "cart" } }));
         setDone(true);
         setTimeout(() => setDone(false), 1400);
       }}

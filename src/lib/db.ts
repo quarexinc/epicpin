@@ -1,6 +1,8 @@
 import "server-only";
-import { SCHEMA_SQL } from "./schema";
-import { seedDatabase } from "./seed";
+import { MIGRATIONS_SQL, SCHEMA_SQL } from "./schema";
+import { seedDatabase, seedExtras } from "./seed";
+
+const SCHEMA_VERSION = "3";
 
 type Row = Record<string, any>;
 export type Q = <T = Row>(text: string, params?: unknown[]) => Promise<T[]>;
@@ -22,6 +24,7 @@ async function createDriver(): Promise<Driver> {
       max: 5,
       idle_timeout: 20,
       prepare: false,
+      connection: { TimeZone: "Europe/Istanbul" },
       ssl: url.includes("localhost") || url.includes("sslmode=disable") ? false : "require",
       types: { numeric: { to: 1700, from: [1700], serialize: (x: unknown) => String(x), parse: (x: string) => Number(x) } } as any,
     });
@@ -86,11 +89,23 @@ async function driver(): Promise<Driver> {
   const d = await g.__epicDriver;
   if (!g.__epicReady) {
     g.__epicReady = (async () => {
-      await d.exec(SCHEMA_SQL);
+      if (d.kind === "pglite") await d.exec("SET TIME ZONE 'Europe/Istanbul'");
+      // Şema güncelse soğuk açılışta tek sorguyla geç
+      try {
+        const v = await d.query<{ value: string }>("SELECT value FROM settings WHERE key = 'schema_version'");
+        if (v[0]?.value === SCHEMA_VERSION) return;
+      } catch {}
       await d.transaction(async (q) => {
+        // Aynı anda açılan sunucular şemayı birlikte kurmaya çalışmasın
         await q("SELECT pg_advisory_xact_lock(7340211)");
+        for (const stmt of (SCHEMA_SQL + MIGRATIONS_SQL).split(";").map((x) => x.trim()).filter(Boolean)) await q(stmt);
         const r = await q<{ c: number }>("SELECT COUNT(*)::int AS c FROM users");
         if (r[0].c === 0) await seedDatabase(q);
+        await seedExtras(q);
+        await q(
+          "INSERT INTO settings (key, value) VALUES ('schema_version', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+          [SCHEMA_VERSION],
+        );
       });
     })().catch((e) => {
       g.__epicReady = undefined;

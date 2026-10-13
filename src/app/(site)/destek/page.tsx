@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Headphones, MessageCircle } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { q } from "@/lib/db";
+import { getFaqs } from "@/lib/data";
 import { dateTimeTR } from "@/lib/utils";
 import { PageHead } from "@/components/site/Section";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,16 +10,12 @@ import { NewTicketForm } from "@/components/site/TicketForms";
 
 export const metadata = { title: "Destek merkezi" };
 
-const FAQ = [
-  ["Kodum ne zaman gelir?", "Otomatik teslimatlı ürünlerde kod ödeme anında Siparişlerim sayfasında görünür. Manuel ürünler ortalama 15 dakikada teslim edilir."],
-  ["Bakiye yükleme ne kadar sürer?", "Havale/EFT ve Papara bildirimleri genellikle 5-15 dakika içinde onaylanır."],
-  ["Kod çalışmıyor, ne yapmalıyım?", "Hesap bölgeni kontrol et. Sorun devam ederse sipariş numaranla destek talebi aç veya sipariş sayfasından iade talebi oluştur."],
-  ["İade alabilir miyim?", "Kullanılmamış kodlar için iade talebi açabilirsin. Onaylanan iadeler bakiyene eklenir."],
-];
+
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ siparis?: string }> }) {
   const u = await getUser();
   const { siparis } = await searchParams;
+  const faqs = await getFaqs();
   const [tickets, orders] = u
     ? await Promise.all([
         q<{ id: number; subject: string; status: string; updated_at: string }>("SELECT * FROM tickets WHERE user_id = $1 ORDER BY updated_at DESC", [u.id]),
@@ -68,12 +65,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
         <div className="panel p-6">
           <h2 className="flex items-center gap-2 font-display font-bold"><Headphones className="h-5 w-5 text-ember" /> Sık sorulanlar</h2>
           <div className="mt-4 grid gap-2">
-            {FAQ.map(([qq, a]) => (
-              <details key={qq} className="group rounded-xl border border-line bg-coal p-4 open:border-ember/40">
-                <summary className="cursor-pointer list-none text-sm font-semibold marker:hidden">{qq}</summary>
-                <p className="mt-2 text-sm text-mute">{a}</p>
+            {faqs.map((f) => (
+              <details key={f.id} className="group rounded-xl border border-line bg-coal p-4 transition open:border-ember/40 hover:border-mute">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold marker:hidden">
+                  {f.question}
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-smoke text-ember transition group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-2 text-sm leading-6 text-mute">{f.answer}</p>
               </details>
             ))}
+            {!faqs.length && <p className="text-sm text-mute">Henüz soru eklenmedi.</p>}
           </div>
         </div>
       </div>

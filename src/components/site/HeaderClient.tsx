@@ -39,8 +39,21 @@ export function SearchBox() {
 
 export function CartButton() {
   const { count } = useCart();
+  const [bump, setBump] = useState(0);
+  useEffect(() => {
+    const f = () => setBump((b) => b + 1);
+    window.addEventListener("ep-toast", f);
+    return () => window.removeEventListener("ep-toast", f);
+  }, []);
   return (
-    <Link href="/sepet" className="relative grid h-10 w-10 place-items-center rounded-xl text-mute transition hover:bg-smoke hover:text-bone" aria-label="Sepet">
+    <Link
+      key={bump}
+      href="/sepet"
+      className="relative grid h-10 w-10 place-items-center rounded-xl text-mute transition hover:bg-smoke hover:text-bone"
+      style={bump ? { animation: "cartBump .5s cubic-bezier(.3,1.8,.5,1)" } : undefined}
+      aria-label="Sepet"
+    >
+      <style>{`@keyframes cartBump{0%{transform:scale(1)}40%{transform:scale(1.35) rotate(-10deg);color:#FF6A13}100%{transform:none}}`}</style>
       <ShoppingCart className="h-5 w-5" />
       {count > 0 && (
         <span className="absolute right-0.5 top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-gradient-to-br from-blaze to-ember px-1 text-[10px] font-extrabold text-void">
@@ -220,5 +233,18 @@ export function MobileMenu({ cats, isAdmin, loggedIn }: { cats: Cat[]; isAdmin: 
         </div>
       )}
     </>
+  );
+}
+
+export function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const path = usePathname();
+  const sp = useSearchParams();
+  const [p, qs] = href.split("?");
+  const on = path === p && (qs ? sp.toString() === qs : !sp.get("sirala"));
+  return (
+    <Link href={href} className={`group relative rounded-lg px-3 py-2 text-sm font-semibold transition ${on ? "text-bone" : "text-bone/75 hover:text-bone"}`}>
+      {children}
+      <span className={`absolute inset-x-3 -bottom-[9px] h-[2px] origin-left rounded-full bg-gradient-to-r from-blaze to-ember transition-transform duration-300 ${on ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"}`} />
+    </Link>
   );
 }

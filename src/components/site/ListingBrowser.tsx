@@ -40,9 +40,9 @@ export async function ListingBrowser({ base, categoryId, q, sort, activeSlug }: 
             <Link
               key={c.id}
               href={`/kategori/${c.slug}`}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${activeSlug === c.slug ? "bg-ember/15 font-bold text-ember" : "text-bone/85 hover:bg-smoke"}`}
+              className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${activeSlug === c.slug ? "bg-ember/15 font-bold text-ember" : "text-bone/85 hover:translate-x-1 hover:bg-smoke"}`}
             >
-              <Icon name={c.icon} className="h-4 w-4" style={{ color: c.color }} />
+              <Icon name={c.icon} className="h-4 w-4 transition group-hover:scale-125" style={{ color: c.color }} />
               <span className="flex-1">{c.name}</span>
               <span className="text-xs text-mute">{c.listing_count}</span>
             </Link>
@@ -72,8 +72,10 @@ export async function ListingBrowser({ base, categoryId, q, sort, activeSlug }: 
         </div>
         {items.length ? (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
-            {items.map((l) => (
-              <ListingCard key={l.id} l={l} fav={favs.has(l.id)} />
+            {items.map((l, i) => (
+              <div key={l.id} data-reveal style={{ ["--d" as any]: `${(i % 4) * 60}ms` }}>
+                <ListingCard l={l} fav={favs.has(l.id)} />
+              </div>
             ))}
           </div>
         ) : (

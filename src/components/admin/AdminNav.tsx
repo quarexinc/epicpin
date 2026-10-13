@@ -4,15 +4,16 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Package, Store, Folder, PanelsTopLeft, Megaphone, Newspaper, Users, Wallet, Undo2, LifeBuoy, CreditCard, Settings, Menu, X, ExternalLink,
+  TicketPercent, CircleHelp, History,
 } from "lucide-react";
 import { Logo } from "../Logo";
 
 const GROUPS: [string, [string, string, any, string?][]][] = [
   ["Genel", [["/admin", "Panel", LayoutDashboard], ["/admin/siparisler", "Siparişler", Package, "manual"]]],
-  ["Mağaza", [["/admin/ilanlar", "İlanlar", Store], ["/admin/kategoriler", "Kategoriler", Folder], ["/admin/bannerlar", "Bannerlar", PanelsTopLeft]]],
-  ["İçerik", [["/admin/duyurular", "Duyurular", Megaphone], ["/admin/blog", "Blog", Newspaper]]],
+  ["Mağaza", [["/admin/ilanlar", "İlanlar", Store], ["/admin/kategoriler", "Kategoriler", Folder], ["/admin/bannerlar", "Bannerlar", PanelsTopLeft], ["/admin/kuponlar", "Kuponlar", TicketPercent]]],
+  ["İçerik", [["/admin/duyurular", "Duyurular", Megaphone], ["/admin/blog", "Blog", Newspaper], ["/admin/sss", "Sık sorulanlar", CircleHelp]]],
   ["Müşteriler", [["/admin/uyeler", "Üyeler", Users], ["/admin/bakiye", "Bakiye talepleri", Wallet, "deposits"], ["/admin/iadeler", "İade talepleri", Undo2, "refunds"], ["/admin/destek", "Destek", LifeBuoy, "tickets"]]],
-  ["Ayarlar", [["/admin/odeme", "Ödeme yöntemleri", CreditCard], ["/admin/ayarlar", "Site ayarları", Settings]]],
+  ["Ayarlar", [["/admin/odeme", "Ödeme yöntemleri", CreditCard], ["/admin/ayarlar", "Site ayarları", Settings], ["/admin/kayitlar", "İşlem kayıtları", History]]],
 ];
 
 export function AdminNav({ counts }: { counts: Record<string, number> }) {
@@ -29,8 +30,8 @@ export function AdminNav({ counts }: { counts: Record<string, number> }) {
               const on = href === "/admin" ? path === href : path.startsWith(href);
               const c = ck ? counts[ck] : 0;
               return (
-                <Link key={href} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition ${on ? "bg-ember text-void" : "text-bone/80 hover:bg-smoke"}`}>
-                  <I className="h-4 w-4" />
+                <Link key={href} href={href} className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition ${on ? "bg-ember text-void" : "text-bone/80 hover:translate-x-1 hover:bg-smoke"}`}>
+                  <I className="h-4 w-4 transition group-hover:scale-110" />
                   <span className="flex-1">{label}</span>
                   {c > 0 && <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-bold ${on ? "bg-void text-ember" : "bg-plasma text-white"}`}>{c}</span>}
                 </Link>

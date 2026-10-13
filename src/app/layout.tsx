@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { getSettings } from "@/lib/data";
 import { img } from "@/lib/utils";
-
-export const dynamic = "force-dynamic";
+import { Suspense } from "react";
+import { RevealObserver, ScrollState, TopLoader } from "@/components/Motion";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
@@ -32,8 +32,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `try{if(sessionStorage.getItem('ep_seen'))document.documentElement.dataset.seen='1'}catch(e){}`,
           }}
         />
+        <noscript>
+          <style>{`[data-reveal]{opacity:1!important;transform:none!important}#ep-splash{display:none}`}</style>
+        </noscript>
       </head>
-      <body>{children}</body>
+      <body>
+        <Suspense>
+          <TopLoader />
+        </Suspense>
+        <RevealObserver />
+        <ScrollState />
+        {children}
+      </body>
     </html>
   );
 }

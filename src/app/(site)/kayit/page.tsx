@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
+import { safeNext } from "@/lib/utils";
 import { AuthShell } from "@/components/site/AuthShell";
 import { RegisterForm } from "@/components/site/AuthForms";
 
@@ -10,7 +11,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
   if (await getUser()) redirect("/");
   return (
     <AuthShell title="Hesap oluştur" sub="30 saniyede üye ol, ilk kodunu hemen al.">
-      <RegisterForm next={next} />
+      <RegisterForm next={safeNext(next)} />
     </AuthShell>
   );
 }

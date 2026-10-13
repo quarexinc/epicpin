@@ -16,15 +16,18 @@ export default async function Dashboard() {
     (SELECT COUNT(*)::int FROM refund_requests WHERE status = 'pending') AS refunds,
     (SELECT COUNT(*)::int FROM tickets WHERE status IN ('open','customer_reply')) AS tickets,
     (SELECT COUNT(*)::int FROM order_items WHERE status = 'pending') AS manual`);
-  const [recent, low, days] = await Promise.all([
+  const [recent, low, days, top] = await Promise.all([
     q<any>(`SELECT o.id, o.total, o.created_at, u.username, string_agg(oi.title, ', ') AS items FROM orders o JOIN users u ON u.id = o.user_id JOIN order_items oi ON oi.order_id = o.id GROUP BY o.id, u.username ORDER BY o.id DESC LIMIT 8`),
     q<any>(`SELECT l.id, l.title, (SELECT COUNT(*)::int FROM stock_codes s WHERE s.listing_id = l.id AND s.order_item_id IS NULL) AS stock FROM listings l WHERE l.active AND l.delivery_type = 'auto' ORDER BY stock ASC LIMIT 6`),
     q<any>(`SELECT to_char(d, 'DD.MM') AS day, COALESCE((SELECT SUM(total) FROM orders WHERE created_at::date = d::date),0) AS total
             FROM generate_series(current_date - 13, current_date, interval '1 day') d ORDER BY d`),
+    q<any>(`SELECT oi.listing_id, oi.title, SUM(oi.quantity)::int AS qty, SUM(oi.unit_price * oi.quantity) AS revenue
+            FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.created_at >= now() - interval '30 days' AND oi.status <> 'refunded'
+            GROUP BY oi.listing_id, oi.title ORDER BY qty DESC LIMIT 5`),
   ]);
   const max = Math.max(1, ...days.map((d: any) => Number(d.total)));
   const stats: [any, string, string, string?, string?][] = [
-    [TrendingUp, "Bugünkü ciro", tl(s.rev_today), `Son 30 gün ${tl(s.rev_30)}`],
+    [TrendingUp, "Bugünkü ciro", tl(s.rev_today), `Son 30 gün ${tl(s.rev_30)}`, "/admin/siparisler"],
     [ShoppingBag, "Siparişler", String(s.orders), `Bugün ${s.orders_today}`, "/admin/siparisler"],
     [Users, "Üyeler", String(s.users), `Son 7 gün +${s.users_7}`, "/admin/uyeler"],
   ];
@@ -88,14 +91,33 @@ export default async function Dashboard() {
         </Card>
       </div>
 
+      <Card title="Son 30 günün çok satanları" className="mt-4">
+        {top.length ? (
+          <ul className="grid gap-2">
+            {top.map((t: any, i: number) => (
+              <li key={i}>
+                <Link href={t.listing_id ? `/admin/ilanlar/${t.listing_id}` : "/admin/ilanlar"} className="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-smoke">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-ember/15 font-display text-xs font-bold text-ember">{i + 1}</span>
+                  <span className="flex-1 truncate font-semibold">{t.title}</span>
+                  <span className="text-mute">{t.qty} adet</span>
+                  <span className="w-28 text-right font-display font-bold">{tl(t.revenue)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-mute">Son 30 günde satış yok.</p>
+        )}
+      </Card>
+
       <Card title="Son siparişler" className="mt-4" actions={<Link href="/admin/siparisler" className="text-xs font-semibold text-ember">Tümü</Link>}>
         {recent.length ? (
           <div className="-m-5 overflow-x-auto">
             <table className="w-full min-w-[600px] text-sm">
               <tbody className="divide-y divide-line">
                 {recent.map((o: any) => (
-                  <tr key={o.id}>
-                    <td className="p-4 font-display font-bold text-mute">#{o.id}</td>
+                  <tr key={o.id} className="hover:bg-smoke/40">
+                    <td className="p-4"><Link href={`/admin/siparisler/${o.id}`} className="font-display font-bold text-ember hover:underline">#{o.id}</Link></td>
                     <td className="p-4 font-semibold">{o.username}</td>
                     <td className="max-w-xs truncate p-4 text-bone/80">{o.items}</td>
                     <td className="p-4 text-mute">{dateTimeTR(o.created_at)}</td>

@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Bell, Heart, Wallet, Headphones, Newspaper, Megaphone } from "lucide-react";
+import { Bell, Heart, Wallet, Headphones, Newspaper, Megaphone, ChevronRight } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { getAnnouncements, getCategories, getSettings } from "@/lib/data";
 import { img, tl } from "@/lib/utils";
 import { Logo } from "../Logo";
 import { Icon } from "../Icon";
-import { CartButton, CategoryMenu, MobileMenu, SearchBox, UserMenu } from "./HeaderClient";
+import { CartButton, CategoryMenu, MobileMenu, NavLink, SearchBox, UserMenu } from "./HeaderClient";
 
 export async function Header() {
   const [user, settings, cats, anns] = await Promise.all([getUser(), getSettings(), getCategories(), getAnnouncements()]);
@@ -44,6 +44,7 @@ export async function Header() {
                   <span className="block font-display text-[13px] font-bold">{p.title}</span>
                   <span className="block text-xs text-mute group-hover:text-bone/80">{p.text}</span>
                 </span>
+                <ChevronRight className="relative ml-auto h-4 w-4 -translate-x-2 text-mute opacity-0 transition group-hover:translate-x-0 group-hover:text-ember group-hover:opacity-100" />
               </Link>
             );
           })}
@@ -79,8 +80,8 @@ export async function Header() {
       </div>
 
       {/* Ana başlık */}
-      <header className="sticky top-0 z-40 border-b border-line bg-coal/85 backdrop-blur-xl">
-        <div className="container-ep flex h-[72px] items-center gap-3 md:gap-6">
+      <header className="sticky top-0 z-40 border-b border-line bg-coal/85 backdrop-blur-xl transition-[background-color,box-shadow] duration-300 [html[data-scrolled]_&]:bg-coal/95 [html[data-scrolled]_&]:shadow-[0_12px_40px_-12px_rgba(0,0,0,.9)]">
+        <div className="container-ep flex h-[72px] items-center gap-3 transition-[height] duration-300 md:gap-6 [html[data-scrolled]_&]:h-[62px]">
           <MobileMenu cats={cats.map((c) => ({ name: c.name, slug: c.slug, icon: c.icon, color: c.color }))} isAdmin={user?.role === "admin"} loggedIn={!!user} />
           <Link href="/" aria-label="EpicPin ana sayfa" className="shrink-0">
             <Logo logoUrl={logoUrl} />
@@ -94,7 +95,7 @@ export async function Header() {
             {user && (
               <Link
                 href="/bakiye-yukle"
-                className="hidden sm:flex items-center gap-2 rounded-xl border border-ember/30 bg-ember/10 px-3 py-2 text-sm font-bold text-blaze transition hover:bg-ember/20"
+                className="hidden sm:flex items-center gap-2 rounded-xl border border-ember/30 bg-ember/10 px-3 py-2 text-sm font-bold text-blaze transition hover:-translate-y-0.5 hover:border-ember hover:bg-ember/20"
                 title="Bakiye yükle"
               >
                 <Wallet className="h-4 w-4" />
@@ -127,11 +128,13 @@ export async function Header() {
       <div className="relative z-30 hidden md:block border-b border-line bg-void/60">
         <div className="container-ep flex h-14 items-center gap-1">
           <CategoryMenu cats={cats.map((c) => ({ name: c.name, slug: c.slug, icon: c.icon, color: c.color, count: c.listing_count ?? 0 }))} />
-          <NavLink href="/ilanlar">İlan pazarı</NavLink>
-          <NavLink href="/ilanlar?sirala=indirim">Haftanın fırsatları</NavLink>
-          <NavLink href="/ilanlar?sirala=populer">Çok satanlar</NavLink>
-          <NavLink href="/blog">Blog</NavLink>
-          <NavLink href="/destek">Destek</NavLink>
+          <Suspense>
+            <NavLink href="/ilanlar">İlan pazarı</NavLink>
+            <NavLink href="/ilanlar?sirala=indirim">Haftanın fırsatları</NavLink>
+            <NavLink href="/ilanlar?sirala=populer">Çok satanlar</NavLink>
+            <NavLink href="/blog">Blog</NavLink>
+            <NavLink href="/destek">Destek</NavLink>
+          </Suspense>
           <Link href="/bakiye-yukle" className="btn-ember ml-auto">
             <Wallet className="h-4 w-4" /> Bakiye yükle
           </Link>
@@ -141,10 +144,3 @@ export async function Header() {
   );
 }
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link href={href} className="rounded-lg px-3 py-2 text-sm font-semibold text-bone/80 transition hover:bg-smoke hover:text-bone">
-      {children}
-    </Link>
-  );
-}

@@ -45,6 +45,23 @@ export function BuyBox({ id, price, stock, fav }: { id: number; price: number; s
       >
         <Zap className="h-5 w-5" /> {out ? "Stokta yok" : "Hemen satın al"}
       </button>
+      {/* Mobilde her zaman görünen satın alma çubuğu */}
+      <div className="ep-buybar fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-line bg-coal/95 p-3 backdrop-blur lg:hidden">
+        <div className="leading-tight">
+          <div className="text-[11px] text-mute">{qty} adet</div>
+          <div className="font-display text-lg font-extrabold text-blaze">{tl(price * qty)}</div>
+        </div>
+        <button
+          disabled={out}
+          onClick={() => {
+            cart.add(id, qty);
+            router.push("/sepet");
+          }}
+          className="btn-ember ml-auto h-12 flex-1"
+        >
+          <Zap className="h-4 w-4" /> {out ? "Stokta yok" : "Satın al"}
+        </button>
+      </div>
       <div className="mt-2.5 flex gap-2.5">
         <div className="flex-1">
           <AddToCartButton id={id} qty={qty} disabled={out} big />

@@ -1,5 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { bust } from "@/lib/bust";
+import type { Q } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { one, q, tx } from "@/lib/db";
@@ -26,9 +28,42 @@ export async function getCartListings(ids: number[]) {
   return q<Listing>(`${LISTING_SELECT} WHERE l.id = ANY($1::int[]) AND l.active`, [clean]);
 }
 
+type Coupon = { id: number; code: string; kind: string; value: number; min_total: number; max_uses: number | null; used_count: number; per_user_once: boolean; expires_at: string | null; active: boolean };
+
+/** Kuponu kontrol eder; geçerliyse indirim tutarını döner, değilse hata fırlatır. */
+async function checkCoupon(run: Q, code: string, userId: number, subtotal: number, lock = false) {
+  const [c] = await run<Coupon>(`SELECT * FROM coupons WHERE upper(code) = upper($1) ${lock ? "FOR UPDATE" : ""}`, [code.trim()]);
+  if (!c || !c.active) throw new Error("Bu indirim kodu geçerli değil.");
+  if (c.expires_at && new Date(c.expires_at) < new Date()) throw new Error("Bu indirim kodunun süresi dolmuş.");
+  if (c.max_uses != null && c.used_count >= c.max_uses) throw new Error("Bu indirim kodunun kullanım limiti doldu.");
+  if (subtotal < Number(c.min_total)) throw new Error(`Bu kod ${Number(c.min_total).toFixed(2)} ₺ ve üzeri siparişlerde geçerli.`);
+  if (c.per_user_once) {
+    const [used] = await run("SELECT 1 FROM orders WHERE user_id = $1 AND upper(coupon_code) = upper($2) LIMIT 1", [userId, c.code]);
+    if (used) throw new Error("Bu indirim kodunu daha önce kullandın.");
+  }
+  const raw = c.kind === "percent" ? (subtotal * Number(c.value)) / 100 : Number(c.value);
+  const discount = Math.min(Math.round(raw * 100) / 100, subtotal);
+  return { coupon: c, discount };
+}
+
+export async function previewCouponAction(code: string, items: { id: number; qty: number }[]): Promise<{ ok: true; code: string; discount: number; label: string } | { ok: false; error: string }> {
+  const u = await getUser();
+  if (!u) return { ok: false, error: "İndirim kodu kullanmak için giriş yap." };
+  if (!code.trim()) return { ok: false, error: "Bir kod yaz." };
+  const ids = items.map((i) => Math.floor(Number(i.id))).filter((i) => i > 0);
+  const rows = ids.length ? await q<{ id: number; price: number }>("SELECT id, price FROM listings WHERE id = ANY($1::int[]) AND active", [ids]) : [];
+  const subtotal = Math.round(items.reduce((a, i) => a + (rows.find((r) => r.id === Number(i.id))?.price ?? 0) * Math.max(0, Math.floor(i.qty)), 0) * 100) / 100;
+  try {
+    const { coupon, discount } = await checkCoupon(q, code, u.id, subtotal);
+    return { ok: true, code: coupon.code, discount, label: coupon.kind === "percent" ? `%${Number(coupon.value)} indirim` : `${Number(coupon.value).toFixed(2)} ₺ indirim` };
+  } catch (e: any) {
+    return { ok: false, error: e.message };
+  }
+}
+
 type CheckoutResult = { ok: true; orderId: number } | { ok: false; error: string; login?: boolean };
 
-export async function checkoutAction(items: { id: number; qty: number }[]): Promise<CheckoutResult> {
+export async function checkoutAction(items: { id: number; qty: number }[], couponCode?: string): Promise<CheckoutResult> {
   const u = await getUser();
   if (!u) return { ok: false, error: "Satın almak için giriş yap.", login: true };
   const list = items
@@ -49,11 +84,26 @@ export async function checkoutAction(items: { id: number; qty: number }[]): Prom
         } else if (l.manual_stock < it.qty) throw new Error(`"${l.title}" için yeterli stok yok (kalan: ${l.manual_stock}).`);
         rows.push({ l, qty: it.qty });
       }
-      const total = Math.round(rows.reduce((a, r) => a + Number(r.l.price) * r.qty, 0) * 100) / 100;
+      const subtotal = Math.round(rows.reduce((a, r) => a + Number(r.l.price) * r.qty, 0) * 100) / 100;
+      let discount = 0;
+      let code: string | null = null;
+      if (couponCode?.trim()) {
+        const c = await checkCoupon(t, couponCode, u.id, subtotal, true);
+        discount = c.discount;
+        code = c.coupon.code;
+        await t("UPDATE coupons SET used_count = used_count + 1 WHERE id = $1", [c.coupon.id]);
+      }
+      const total = Math.round((subtotal - discount) * 100) / 100;
       if (Number(user.balance) < total)
         throw new Error(`Bakiyen yetersiz. Gereken: ${total.toFixed(2)} ₺, bakiyen: ${Number(user.balance).toFixed(2)} ₺.`);
 
-      const [order] = await t<{ id: number }>("INSERT INTO orders (user_id, total) VALUES ($1,$2) RETURNING id", [u.id, total]);
+      const [order] = await t<{ id: number }>("INSERT INTO orders (user_id, total, subtotal, discount, coupon_code) VALUES ($1,$2,$3,$4,$5) RETURNING id", [
+        u.id,
+        total,
+        subtotal,
+        discount,
+        code,
+      ]);
       for (const { l, qty } of rows) {
         const [item] = await t<{ id: number }>(
           "INSERT INTO order_items (order_id, listing_id, title, unit_price, quantity, delivery_type) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
@@ -80,7 +130,7 @@ export async function checkoutAction(items: { id: number; qty: number }[]): Prom
       await t("INSERT INTO balance_logs (user_id, amount, description) VALUES ($1,$2,$3)", [u.id, -total, `Sipariş #${order.id}`]);
       return order.id;
     });
-    revalidatePath("/", "layout");
+    bust("listings", "stats");
     return { ok: true, orderId };
   } catch (e: any) {
     return { ok: false, error: e?.message || "Sipariş oluşturulamadı." };

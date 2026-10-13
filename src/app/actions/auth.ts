@@ -3,23 +3,35 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { one, q } from "@/lib/db";
 import { createSession, destroySession } from "@/lib/auth";
-import { str } from "@/lib/utils";
+import { safeNext, str } from "@/lib/utils";
 
 export type FormState = { error?: string; ok?: string } | undefined;
-
-function safeNext(n: string) {
-  return n.startsWith("/") && !n.startsWith("//") ? n : "/";
-}
 
 export async function loginAction(_: FormState, fd: FormData): Promise<FormState> {
   const id = str(fd, "identifier").toLowerCase();
   const password = str(fd, "password");
   if (!id || !password) return { error: "E-posta/kullanıcı adı ve şifre gerekli." };
+  // Kaba kuvvet koruması: 15 dakikada 8 hatalı deneme
+  const key = `login:${id}`;
+  const att = await one<{ fails: number; fresh: boolean }>(
+    "SELECT fails, window_start > now() - interval '15 minutes' AS fresh FROM login_attempts WHERE key = $1",
+    [key],
+  );
+  if (att?.fresh && att.fails >= 8) return { error: "Çok fazla hatalı deneme yaptın. 15 dakika sonra tekrar dene." };
   const u = await one<{ id: number; password_hash: string; banned: boolean }>(
     "SELECT id, password_hash, banned FROM users WHERE lower(email) = $1 OR lower(username) = $1",
     [id],
   );
-  if (!u || !(await bcrypt.compare(password, u.password_hash))) return { error: "Bilgiler hatalı. Tekrar dene." };
+  if (!u || !(await bcrypt.compare(password, u.password_hash))) {
+    await q(
+      `INSERT INTO login_attempts (key, fails, window_start) VALUES ($1, 1, now())
+       ON CONFLICT (key) DO UPDATE SET fails = CASE WHEN login_attempts.window_start > now() - interval '15 minutes' THEN login_attempts.fails + 1 ELSE 1 END,
+         window_start = CASE WHEN login_attempts.window_start > now() - interval '15 minutes' THEN login_attempts.window_start ELSE now() END`,
+      [key],
+    );
+    return { error: "Bilgiler hatalı. Tekrar dene." };
+  }
+  await q("DELETE FROM login_attempts WHERE key = $1", [key]);
   if (u.banned) return { error: "Hesabın askıya alınmış. Destek ekibiyle iletişime geç." };
   await createSession(u.id);
   redirect(safeNext(str(fd, "next")));

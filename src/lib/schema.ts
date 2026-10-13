@@ -189,3 +189,51 @@ CREATE TABLE IF NOT EXISTS ticket_messages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 `;
+
+// Sonradan eklenen tablolar/kolonlar (mevcut veritabanlarını da günceller)
+export const MIGRATIONS_SQL = `
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotal NUMERIC(12,2);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code TEXT;
+
+CREATE TABLE IF NOT EXISTS coupons (
+  id SERIAL PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL DEFAULT 'percent',
+  value NUMERIC(12,2) NOT NULL,
+  min_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  max_uses INT,
+  used_count INT NOT NULL DEFAULT 0,
+  per_user_once BOOLEAN NOT NULL DEFAULT true,
+  expires_at TIMESTAMPTZ,
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS faqs (
+  id SERIAL PRIMARY KEY,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  sort INT NOT NULL DEFAULT 0,
+  active BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE TABLE IF NOT EXISTS admin_logs (
+  id SERIAL PRIMARY KEY,
+  admin_id INT REFERENCES users(id) ON DELETE SET NULL,
+  admin_name TEXT NOT NULL DEFAULT '',
+  action TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  key TEXT PRIMARY KEY,
+  fails INT NOT NULL DEFAULT 0,
+  window_start TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS orders_user_idx ON orders(user_id);
+CREATE INDEX IF NOT EXISTS order_items_order_idx ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS listings_cat_idx ON listings(category_id);
+`;

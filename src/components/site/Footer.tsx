@@ -6,7 +6,7 @@ import { Logo } from "../Logo";
 
 const Social = ({ href, label, d }: { href?: string; label: string; d: string }) =>
   href ? (
-    <a href={href} target="_blank" rel="noreferrer" aria-label={label} className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-ash text-mute transition hover:border-ember hover:text-ember">
+    <a href={href} target="_blank" rel="noreferrer" aria-label={label} className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-ash text-mute transition hover:-translate-y-1 hover:border-ember hover:text-ember">
       <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="currentColor"><path d={d} /></svg>
     </a>
   ) : null;
@@ -17,25 +17,27 @@ export async function Footer() {
     <footer className="mt-24 border-t border-line bg-coal">
       <div className="container-ep grid gap-4 border-b border-line py-8 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          [Zap, "Anında teslimat", "Kodlar ödeme sonrası saniyeler içinde hesabında."],
-          [ShieldCheck, "Orijinal kodlar", "Tüm ürünler yetkili dağıtıcılardan gelir."],
-          [Lock, "Güvenli ödeme", "Kart bilgin bizde saklanmaz, bakiyenle öde."],
-          [Headphones, "7/24 destek", "Sorun mu var? Destek talebi aç, hemen dönelim."],
-        ].map(([I, t, d]: any) => (
-          <div key={t} className="flex items-start gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-ember/10 text-ember">
+          [Zap, "Anında teslimat", "Kodlar ödeme sonrası saniyeler içinde hesabında.", "/ilanlar"],
+          [ShieldCheck, "Orijinal kodlar", "Tüm ürünler yetkili dağıtıcılardan gelir.", "/kategoriler"],
+          [Lock, "Güvenli ödeme", "Kart bilgin bizde saklanmaz, bakiyenle öde.", "/bakiye-yukle"],
+          [Headphones, "7/24 destek", "Sorun mu var? Destek talebi aç, hemen dönelim.", "/destek"],
+        ].map(([I, t, d, href]: any) => (
+          <Link key={t} href={href} className="group -m-2 flex items-start gap-3 rounded-2xl p-2 transition hover:bg-ash">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-ember/10 text-ember transition group-hover:-rotate-6 group-hover:scale-110 group-hover:bg-ember group-hover:text-void">
               <I className="h-5 w-5" />
             </span>
             <div>
               <div className="font-display text-sm font-bold">{t}</div>
               <div className="mt-0.5 text-sm text-mute">{d}</div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
       <div className="container-ep grid gap-10 py-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
-          <Logo logoUrl={img(s.logo_image_id)} />
+          <Link href="/" aria-label="Ana sayfa" className="inline-block transition hover:opacity-80">
+            <Logo logoUrl={img(s.logo_image_id)} />
+          </Link>
           <p className="mt-4 max-w-sm text-sm leading-6 text-mute">{s.footer_about}</p>
           <div className="mt-5 flex gap-2">
             <Social href={s.instagram} label="Instagram" d="M12 2.2c3.2 0 3.6 0 4.8.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-3.3-.1-4.8-1.7-4.9-4.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8C2.4 3.9 3.9 2.4 7.2 2.3 8.4 2.2 8.8 2.2 12 2.2Zm0 4.9a4.9 4.9 0 1 0 0 9.8 4.9 4.9 0 0 0 0-9.8Zm0 8.1a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4Zm5.1-9.4a1.1 1.1 0 1 0 0 2.3 1.1 1.1 0 0 0 0-2.3Z" />
@@ -65,7 +67,7 @@ function FooterCol({ title, links }: { title: string; links: string[][] }) {
       <ul className="grid gap-2.5 text-sm text-mute">
         {links.map(([l, h]) => (
           <li key={h}>
-            <Link href={h} className="hover:text-ember">{l}</Link>
+            <Link href={h} className="link-u transition hover:text-ember">{l}</Link>
           </li>
         ))}
       </ul>

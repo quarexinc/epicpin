@@ -13,6 +13,7 @@ export function HeroSlider({ banners }: { banners: B[] }) {
   const [paused, setPaused] = useState(false);
   const [tick, setTick] = useState(0);
   const touch = useRef<number | null>(null);
+  const root = useRef<HTMLElement>(null);
   const n = banners.length;
 
   const go = useCallback(
@@ -33,6 +34,13 @@ export function HeroSlider({ banners }: { banners: B[] }) {
 
   return (
     <section
+      ref={root}
+      onPointerMove={(e) => {
+        if (e.pointerType !== "mouse") return;
+        const r = root.current!.getBoundingClientRect();
+        root.current!.style.setProperty("--px", `${((e.clientX - r.left) / r.width - 0.5).toFixed(3)}`);
+        root.current!.style.setProperty("--py", `${((e.clientY - r.top) / r.height - 0.5).toFixed(3)}`);
+      }}
       aria-roledescription="carousel"
       aria-label="Kampanyalar"
       className="relative"
@@ -67,18 +75,32 @@ export function HeroSlider({ banners }: { banners: B[] }) {
               {/* arka plan */}
               {b.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={b.image} alt="" className={`absolute inset-0 h-full w-full object-cover transition duration-700 ${on ? "scale-100" : "scale-110"}`} />
+                <img
+                  src={b.image}
+                  alt=""
+                  className={`absolute inset-0 h-full w-full object-cover transition-transform duration-[1.2s] ease-out ${on ? "scale-105" : "scale-125"}`}
+                  style={on ? { transform: "scale(1.08) translate3d(calc(var(--px,0) * -18px), calc(var(--py,0) * -12px), 0)" } : undefined}
+                  fetchPriority={i === 0 ? "high" : "low"}
+                />
               ) : (
                 <>
                   <div className="grid-bg absolute inset-0 opacity-60 [mask-image:radial-gradient(70%_80%_at_70%_50%,#000,transparent)]" />
-                  <BannerArt
-                    theme={b.theme}
-                    seed={b.id}
-                    className={`absolute right-[-6%] top-1/2 h-[118%] w-auto -translate-y-1/2 transition duration-700 ${on ? "opacity-100" : "opacity-40 blur-[1px]"}`}
-                  />
+                  <div
+                    className="absolute inset-0 transition-transform duration-300 ease-out"
+                    style={{ transform: on ? "translate3d(calc(var(--px,0) * -36px), calc(var(--py,0) * -26px), 0)" : undefined }}
+                  >
+                    <BannerArt
+                      theme={b.theme}
+                      seed={b.id}
+                      className={`absolute right-[-6%] top-1/2 h-[118%] w-auto -translate-y-1/2 transition duration-700 ${on ? "scale-100 opacity-100" : "scale-90 opacity-40 blur-[1px]"}`}
+                    />
+                  </div>
                 </>
               )}
               <div className={`absolute inset-0 transition duration-700 ${on ? "bg-gradient-to-t from-black/90 via-black/55 to-black/10 sm:bg-gradient-to-r sm:from-black/85 sm:via-black/45 sm:to-transparent" : "bg-black/55 group-hover:bg-black/40"}`} />
+
+              {/* açık panelin tamamı tıklanabilir */}
+              {on && <Link href={b.cta_link || "/ilanlar"} className="absolute inset-0 z-[1]" aria-label={b.title} tabIndex={-1} />}
 
               {/* kapalı panel başlığı */}
               <div className={`absolute inset-0 flex flex-col items-center justify-end pb-6 transition-opacity duration-300 ${on ? "pointer-events-none opacity-0" : "opacity-100 delay-300"}`}>
@@ -90,8 +112,8 @@ export function HeroSlider({ banners }: { banners: B[] }) {
 
               {/* açık panel içeriği */}
               <div
-                className={`relative flex h-full max-w-[620px] flex-col justify-end p-6 sm:p-10 transition-all duration-500 ${
-                  on ? "translate-y-0 opacity-100 delay-300" : "pointer-events-none translate-y-6 opacity-0"
+                className={`pointer-events-none relative z-[2] flex h-full max-w-[620px] flex-col justify-end p-6 sm:p-10 transition-all duration-500 ${
+                  on ? "translate-y-0 opacity-100 delay-300" : "translate-y-6 opacity-0"
                 }`}
               >
                 {b.label && (
@@ -102,14 +124,22 @@ export function HeroSlider({ banners }: { banners: B[] }) {
                     {b.label}
                   </span>
                 )}
-                <h2 className="h-display text-balance text-[2rem] leading-[1.05] sm:text-5xl">{b.title}</h2>
+                <h2 key={on ? `on${tick}` : "off"} className="h-display text-balance text-[2rem] leading-[1.05] sm:text-5xl">
+                  {b.title.split(" ").map((w, k) => (
+                    <span key={k} className="inline-block overflow-hidden pb-1 align-bottom">
+                      <span className="inline-block" style={on ? { animation: `heroWord .7s cubic-bezier(.2,.9,.2,1) ${0.25 + k * 0.06}s both` } : undefined}>
+                        {w}&nbsp;
+                      </span>
+                    </span>
+                  ))}
+                </h2>
                 {b.subtitle && <p className="mt-4 max-w-md text-[15px] leading-6 text-bone/75">{b.subtitle}</p>}
                 <div className="mt-7 flex items-center gap-3">
                   <Link
                     href={b.cta_link || "/ilanlar"}
                     tabIndex={on ? 0 : -1}
-                    className="btn rounded-full px-6 py-3 text-void"
-                    style={{ background: `linear-gradient(135deg, ${t.a}, ${t.b})`, boxShadow: `0 16px 40px -14px ${t.b}` }}
+                    className="btn-ember pointer-events-auto px-6 py-3"
+                    style={{ background: `linear-gradient(135deg, ${t.a}, ${t.b})` }}
                   >
                     {b.cta_text || "Hemen al"}
                   </Link>
@@ -118,7 +148,7 @@ export function HeroSlider({ banners }: { banners: B[] }) {
 
               {/* ilerleme çubuğu */}
               {on && n > 1 && (
-                <div className="absolute inset-x-6 bottom-0 h-[3px] overflow-hidden rounded-full bg-white/10 sm:inset-x-10">
+                <div className="absolute inset-x-6 bottom-0 z-[2] h-[3px] overflow-hidden rounded-full bg-white/10 sm:inset-x-10">
                   <div
                     key={tick}
                     className="h-full origin-left"
@@ -157,7 +187,7 @@ export function HeroSlider({ banners }: { banners: B[] }) {
           </div>
         </div>
       )}
-      <style>{`@keyframes progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}`}</style>
+      <style>{`@keyframes progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}@keyframes heroWord{from{transform:translateY(105%) rotate(4deg)}to{transform:none}}`}</style>
     </section>
   );
 }

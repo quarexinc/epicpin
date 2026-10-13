@@ -7,6 +7,7 @@ import { deleteAnnouncement, saveAnnouncement } from "@/app/actions/admin";
 import { AdminTitle, Card, Field, Toggle } from "@/components/admin/Fields";
 import { AForm } from "@/components/admin/AForm";
 import { ConfirmSubmit } from "@/components/admin/Confirm";
+import { LinkInput } from "@/components/admin/LinkInput";
 
 const KINDS: Record<string, string> = { info: "Bilgi", promo: "Kampanya", warning: "Uyarı" };
 
@@ -52,7 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
                   {Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </Field>
-              <Field label="Link (isteğe bağlı)"><input name="link" className="input" defaultValue={a?.link} placeholder="/kategori/valorant" /></Field>
+              <Field label="Tıklayınca gideceği sayfa"><LinkInput name="link" defaultValue={a?.link} /></Field>
             </div>
             <Toggle name="in_ticker" label="Üst şeritte kayan yazı olarak göster" defaultChecked={a ? a.in_ticker : true} />
             <Toggle name="active" label="Yayında" defaultChecked={a ? a.active : true} />

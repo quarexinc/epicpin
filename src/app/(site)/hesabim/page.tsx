@@ -18,21 +18,21 @@ export default async function Page() {
   return (
     <div className="grid gap-6">
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blaze to-ember p-5 text-void">
+        <Link href="/bakiye-yukle" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blaze to-ember p-5 text-void transition hover:-translate-y-1">
           <div className="text-sm font-semibold opacity-80">Bakiyen</div>
           <div className="mt-1 font-display text-3xl font-extrabold">{tl(u.balance)}</div>
-          <Link href="/bakiye-yukle" className="mt-3 inline-flex rounded-lg bg-void px-3 py-1.5 text-xs font-bold text-bone">Bakiye yükle</Link>
-        </div>
-        <div className="panel p-5">
+          <span className="mt-3 inline-flex rounded-lg bg-void px-3 py-1.5 text-xs font-bold text-bone transition group-hover:px-4">Bakiye yükle</span>
+        </Link>
+        <Link href="/hesabim/siparisler" className="panel p-5 transition hover:-translate-y-1 hover:border-ember/50">
           <div className="text-sm text-mute">Siparişler</div>
           <div className="mt-1 font-display text-3xl font-extrabold">{stats?.c ?? 0}</div>
           <div className="mt-3 text-xs text-mute">Toplam harcama {tl(stats?.s)}</div>
-        </div>
-        <div className="panel p-5">
+        </Link>
+        <Link href="/destek" className="panel p-5 transition hover:-translate-y-1 hover:border-ember/50">
           <div className="text-sm text-mute">Açık destek talebi</div>
           <div className="mt-1 font-display text-3xl font-extrabold">{tickets?.c ?? 0}</div>
-          <Link href="/destek" className="mt-3 inline-block text-xs font-semibold text-ember">Taleplerimi gör</Link>
-        </div>
+          <span className="mt-3 inline-block text-xs font-semibold text-ember">Taleplerimi gör</span>
+        </Link>
       </div>
       <div className="panel">
         <div className="flex items-center justify-between border-b border-line p-5">

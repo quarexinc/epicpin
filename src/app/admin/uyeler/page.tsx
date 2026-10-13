@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, UserPlus, ShieldCheck, Ban } from "lucide-react";
+import { Search, UserPlus, ShieldCheck, Ban, Download } from "lucide-react";
 import { q } from "@/lib/db";
 import { dateTR, tl } from "@/lib/utils";
 import { createUser } from "@/app/actions/admin";
@@ -22,6 +22,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   return (
     <>
       <AdminTitle title="Üyeler" sub="Üye ve yönetici hesapları.">
+        <a href="/admin/disa-aktar/uyeler" className="btn-ghost"><Download className="h-4 w-4" /> CSV indir</a>
         <Link href="/admin/uyeler?yeni=1" className="btn-ember"><UserPlus className="h-4 w-4" /> Üye / yönetici ekle</Link>
       </AdminTitle>
       {sp.yeni && (
