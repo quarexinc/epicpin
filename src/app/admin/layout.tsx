@@ -8,11 +8,12 @@ export const metadata = { title: "Yönetim paneli", robots: { index: false } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const me = await requireAdmin();
-  const c = await one<{ deposits: number; refunds: number; tickets: number; manual: number }>(`SELECT
+  const c = await one<{ deposits: number; refunds: number; tickets: number; manual: number; shopier: number }>(`SELECT
     (SELECT COUNT(*)::int FROM deposits WHERE status = 'pending') AS deposits,
     (SELECT COUNT(*)::int FROM refund_requests WHERE status = 'pending') AS refunds,
     (SELECT COUNT(*)::int FROM tickets WHERE status IN ('open','customer_reply')) AS tickets,
-    (SELECT COUNT(*)::int FROM order_items WHERE status = 'pending') AS manual`);
+    (SELECT COUNT(*)::int FROM order_items WHERE status = 'pending') AS manual,
+    (SELECT COUNT(*)::int FROM osb_orders WHERE status IN ('unmatched','no_stock','partial')) AS shopier`);
   const kind = await dbKind();
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">

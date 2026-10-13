@@ -8,11 +8,12 @@ import { AForm } from "@/components/admin/AForm";
 import { ConfirmSubmit } from "@/components/admin/Confirm";
 
 const KINDS: Record<string, string> = { bank: "Havale / EFT", papara: "Papara", crypto: "Kripto", card: "Kart / sanal POS", other: "Diğer" };
+const ALL_KINDS: Record<string, string> = { ...KINDS, shopier: "Shopier kartla ödeme" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ duzenle?: string }> }) {
   const { duzenle } = await searchParams;
   const rows = await q<any>("SELECT * FROM payment_methods ORDER BY sort, id");
-  const m = duzenle ? rows.find((x) => x.id === Number(duzenle)) : undefined;
+  const m = duzenle ? rows.find((x) => x.id === Number(duzenle) && x.kind !== "shopier") : undefined;
   return (
     <>
       <AdminTitle title="Ödeme yöntemleri" sub="Bakiye yükleme sayfasında görünen hesaplar. Kullanıcı ödeme yapıp bildirim gönderir, sen Bakiye talepleri ekranından onaylarsın.">
@@ -25,17 +26,21 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold">{x.name}</span>
-                  <span className="chip py-0.5">{KINDS[x.kind] ?? x.kind}</span>
+                  <span className="chip py-0.5">{ALL_KINDS[x.kind] ?? x.kind}</span>
                   {!x.active && <span className="chip py-0.5 text-plasma">Kapalı</span>}
                 </div>
                 <div className="mt-1 break-all font-mono text-xs text-mute">{x.account_name} {x.account_no}</div>
                 <div className="mt-1 text-xs text-mute">Komisyon %{x.commission}, en az {tl(x.min_amount)}</div>
               </div>
+              {x.kind === "shopier" ? (
+                <Link href="/admin/shopier" className="btn-ghost px-3 py-1.5 text-xs">Shopier ayarları</Link>
+              ) : (
               <Link href={`/admin/odeme?duzenle=${x.id}`} className="grid h-8 w-8 place-items-center rounded-lg border border-line hover:border-ember hover:text-ember"><Pencil className="h-3.5 w-3.5" /></Link>
-              <form action={deletePaymentMethod}>
+              )}
+              {x.kind !== "shopier" && <form action={deletePaymentMethod}>
                 <input type="hidden" name="id" value={x.id} />
                 <ConfirmSubmit message="Ödeme yöntemi silinsin mi?" className="grid h-8 w-8 place-items-center rounded-lg border border-line text-mute hover:border-plasma hover:text-plasma"><Trash2 className="h-3.5 w-3.5" /></ConfirmSubmit>
-              </form>
+              </form>}
             </div>
           ))}
           {!rows.length && <p className="p-8 text-center text-sm text-mute">Ödeme yöntemi yok.</p>}

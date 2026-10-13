@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { bust } from "@/lib/bust";
-import type { Q } from "@/lib/db";
+import { checkCoupon, performCheckout } from "@/lib/checkout";
+import { createShopierPayment } from "@/lib/shopierFlow";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { one, q, tx } from "@/lib/db";
@@ -28,24 +28,6 @@ export async function getCartListings(ids: number[]) {
   return q<Listing>(`${LISTING_SELECT} WHERE l.id = ANY($1::int[]) AND l.active`, [clean]);
 }
 
-type Coupon = { id: number; code: string; kind: string; value: number; min_total: number; max_uses: number | null; used_count: number; per_user_once: boolean; expires_at: string | null; active: boolean };
-
-/** Kuponu kontrol eder; geçerliyse indirim tutarını döner, değilse hata fırlatır. */
-async function checkCoupon(run: Q, code: string, userId: number, subtotal: number, lock = false) {
-  const [c] = await run<Coupon>(`SELECT * FROM coupons WHERE upper(code) = upper($1) ${lock ? "FOR UPDATE" : ""}`, [code.trim()]);
-  if (!c || !c.active) throw new Error("Bu indirim kodu geçerli değil.");
-  if (c.expires_at && new Date(c.expires_at) < new Date()) throw new Error("Bu indirim kodunun süresi dolmuş.");
-  if (c.max_uses != null && c.used_count >= c.max_uses) throw new Error("Bu indirim kodunun kullanım limiti doldu.");
-  if (subtotal < Number(c.min_total)) throw new Error(`Bu kod ${Number(c.min_total).toFixed(2)} ₺ ve üzeri siparişlerde geçerli.`);
-  if (c.per_user_once) {
-    const [used] = await run("SELECT 1 FROM orders WHERE user_id = $1 AND upper(coupon_code) = upper($2) LIMIT 1", [userId, c.code]);
-    if (used) throw new Error("Bu indirim kodunu daha önce kullandın.");
-  }
-  const raw = c.kind === "percent" ? (subtotal * Number(c.value)) / 100 : Number(c.value);
-  const discount = Math.min(Math.round(raw * 100) / 100, subtotal);
-  return { coupon: c, discount };
-}
-
 export async function previewCouponAction(code: string, items: { id: number; qty: number }[]): Promise<{ ok: true; code: string; discount: number; label: string } | { ok: false; error: string }> {
   const u = await getUser();
   if (!u) return { ok: false, error: "İndirim kodu kullanmak için giriş yap." };
@@ -66,72 +48,8 @@ type CheckoutResult = { ok: true; orderId: number } | { ok: false; error: string
 export async function checkoutAction(items: { id: number; qty: number }[], couponCode?: string): Promise<CheckoutResult> {
   const u = await getUser();
   if (!u) return { ok: false, error: "Satın almak için giriş yap.", login: true };
-  const list = items
-    .map((i) => ({ id: Math.floor(Number(i.id)), qty: Math.floor(Number(i.qty)) }))
-    .filter((i) => i.id > 0 && i.qty > 0 && i.qty <= 99);
-  if (!list.length) return { ok: false, error: "Sepetin boş." };
-
   try {
-    const orderId = await tx(async (t) => {
-      const [user] = await t<{ balance: number }>("SELECT balance FROM users WHERE id = $1 FOR UPDATE", [u.id]);
-      const rows: { l: { id: number; title: string; price: number; delivery_type: string; manual_stock: number; active: boolean }; qty: number }[] = [];
-      for (const it of list) {
-        const [l] = await t<any>("SELECT id, title, price, delivery_type, manual_stock, active FROM listings WHERE id = $1 FOR UPDATE", [it.id]);
-        if (!l || !l.active) throw new Error("Sepetindeki bir ürün artık satışta değil. Sepeti güncelle.");
-        if (l.delivery_type === "auto") {
-          const [{ c }] = await t<{ c: number }>("SELECT COUNT(*)::int AS c FROM stock_codes WHERE listing_id = $1 AND order_item_id IS NULL", [l.id]);
-          if (c < it.qty) throw new Error(`"${l.title}" için yeterli stok yok (kalan: ${c}).`);
-        } else if (l.manual_stock < it.qty) throw new Error(`"${l.title}" için yeterli stok yok (kalan: ${l.manual_stock}).`);
-        rows.push({ l, qty: it.qty });
-      }
-      const subtotal = Math.round(rows.reduce((a, r) => a + Number(r.l.price) * r.qty, 0) * 100) / 100;
-      let discount = 0;
-      let code: string | null = null;
-      if (couponCode?.trim()) {
-        const c = await checkCoupon(t, couponCode, u.id, subtotal, true);
-        discount = c.discount;
-        code = c.coupon.code;
-        await t("UPDATE coupons SET used_count = used_count + 1 WHERE id = $1", [c.coupon.id]);
-      }
-      const total = Math.round((subtotal - discount) * 100) / 100;
-      if (Number(user.balance) < total)
-        throw new Error(`Bakiyen yetersiz. Gereken: ${total.toFixed(2)} ₺, bakiyen: ${Number(user.balance).toFixed(2)} ₺.`);
-
-      const [order] = await t<{ id: number }>("INSERT INTO orders (user_id, total, subtotal, discount, coupon_code) VALUES ($1,$2,$3,$4,$5) RETURNING id", [
-        u.id,
-        total,
-        subtotal,
-        discount,
-        code,
-      ]);
-      for (const { l, qty } of rows) {
-        const [item] = await t<{ id: number }>(
-          "INSERT INTO order_items (order_id, listing_id, title, unit_price, quantity, delivery_type) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
-          [order.id, l.id, l.title, l.price, qty, l.delivery_type],
-        );
-        if (l.delivery_type === "auto") {
-          const codes = await t<{ code: string }>(
-            `UPDATE stock_codes SET order_item_id = $1 WHERE id IN (
-               SELECT id FROM stock_codes WHERE listing_id = $2 AND order_item_id IS NULL ORDER BY id LIMIT $3 FOR UPDATE SKIP LOCKED
-             ) RETURNING code`,
-            [item.id, l.id, qty],
-          );
-          if (codes.length < qty) throw new Error(`"${l.title}" için stok tükendi.`);
-          await t("UPDATE order_items SET status = 'delivered', delivered_content = $1, delivered_at = now() WHERE id = $2", [
-            codes.map((c) => c.code).join("\n"),
-            item.id,
-          ]);
-        } else {
-          await t("UPDATE listings SET manual_stock = manual_stock - $1 WHERE id = $2", [qty, l.id]);
-        }
-        await t("UPDATE listings SET sold_count = sold_count + $1 WHERE id = $2", [qty, l.id]);
-      }
-      await t("UPDATE users SET balance = balance - $1 WHERE id = $2", [total, u.id]);
-      await t("INSERT INTO balance_logs (user_id, amount, description) VALUES ($1,$2,$3)", [u.id, -total, `Sipariş #${order.id}`]);
-      return order.id;
-    });
-    bust("listings", "stats");
-    return { ok: true, orderId };
+    return { ok: true, orderId: await performCheckout(u.id, items, couponCode) };
   } catch (e: any) {
     return { ok: false, error: e?.message || "Sipariş oluşturulamadı." };
   }
@@ -164,6 +82,7 @@ export async function createDepositAction(_: FormState, fd: FormData): Promise<F
   const sender = str(fd, "sender_name");
   const m = await one<{ id: number; name: string; min_amount: number; active: boolean }>("SELECT * FROM payment_methods WHERE id = $1", [methodId]);
   if (!m || !m.active) return { error: "Bir ödeme yöntemi seç." };
+  if ((m as any).kind === "shopier") return { error: "Kartla ödeme için Kartla öde butonunu kullan." };
   if (!amount || amount <= 0) return { error: "Geçerli bir tutar yaz." };
   if (amount < Number(m.min_amount)) return { error: `Bu yöntem için en az ${Number(m.min_amount).toFixed(2)} ₺ yükleyebilirsin.` };
   if (amount > 100000) return { error: "Tek seferde en fazla 100.000 ₺ yükleyebilirsin." };
@@ -225,4 +144,35 @@ export async function closeTicketAction(fd: FormData) {
   const id = Number(fd.get("ticket_id"));
   await q("UPDATE tickets SET status = 'closed', updated_at = now() WHERE id = $1 AND user_id = $2", [id, u.id]);
   revalidatePath(`/destek/${id}`);
+}
+
+/* ───────────── Shopier ile kartla ödeme ───────────── */
+export async function startShopierDepositAction(_: FormState, fd: FormData): Promise<FormState> {
+  const u = await getUser();
+  if (!u) return { error: "Giriş yapmalısın." };
+  let id: number;
+  try {
+    id = await createShopierPayment(u, {
+      kind: "deposit",
+      amount: num(fd, "amount") ?? 0,
+      buyer: { name: str(fd, "buyer_name"), surname: str(fd, "buyer_surname"), phone: str(fd, "buyer_phone") },
+    });
+  } catch (e: any) {
+    return { error: e?.message || "Ödeme başlatılamadı." };
+  }
+  redirect(`/odeme/shopier/${id}`);
+}
+
+export async function startShopierCartAction(
+  items: { id: number; qty: number }[],
+  coupon: string | null,
+  buyer: { name: string; surname: string; phone: string },
+): Promise<{ ok: true; id: number } | { ok: false; error: string; login?: boolean }> {
+  const u = await getUser();
+  if (!u) return { ok: false, error: "Satın almak için giriş yap.", login: true };
+  try {
+    return { ok: true, id: await createShopierPayment(u, { kind: "cart", items, coupon, buyer }) };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "Ödeme başlatılamadı." };
+  }
 }

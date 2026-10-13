@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Package, Store, Folder, PanelsTopLeft, Megaphone, Newspaper, Users, Wallet, Undo2, LifeBuoy, CreditCard, Settings, Menu, X, ExternalLink,
-  TicketPercent, CircleHelp, History,
+  TicketPercent, CircleHelp, History, ShoppingBag,
 } from "lucide-react";
 import { Logo } from "../Logo";
 
@@ -13,7 +13,7 @@ const GROUPS: [string, [string, string, any, string?][]][] = [
   ["Mağaza", [["/admin/ilanlar", "İlanlar", Store], ["/admin/kategoriler", "Kategoriler", Folder], ["/admin/bannerlar", "Bannerlar", PanelsTopLeft], ["/admin/kuponlar", "Kuponlar", TicketPercent]]],
   ["İçerik", [["/admin/duyurular", "Duyurular", Megaphone], ["/admin/blog", "Blog", Newspaper], ["/admin/sss", "Sık sorulanlar", CircleHelp]]],
   ["Müşteriler", [["/admin/uyeler", "Üyeler", Users], ["/admin/bakiye", "Bakiye talepleri", Wallet, "deposits"], ["/admin/iadeler", "İade talepleri", Undo2, "refunds"], ["/admin/destek", "Destek", LifeBuoy, "tickets"]]],
-  ["Ayarlar", [["/admin/odeme", "Ödeme yöntemleri", CreditCard], ["/admin/ayarlar", "Site ayarları", Settings], ["/admin/kayitlar", "İşlem kayıtları", History]]],
+  ["Ayarlar", [["/admin/shopier", "Shopier ve OSB", ShoppingBag, "shopier"], ["/admin/odeme", "Ödeme yöntemleri", CreditCard], ["/admin/ayarlar", "Site ayarları", Settings], ["/admin/kayitlar", "İşlem kayıtları", History]]],
 ];
 
 export function AdminNav({ counts }: { counts: Record<string, number> }) {

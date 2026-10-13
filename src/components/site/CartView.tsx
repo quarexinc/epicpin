@@ -2,14 +2,15 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Minus, Plus, ShoppingCart, Trash2, Wallet, Zap, CircleAlert, TicketPercent, X } from "lucide-react";
+import { Loader2, Minus, Plus, ShoppingCart, Trash2, Wallet, Zap, CircleAlert, TicketPercent, X, CreditCard, ShieldCheck } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { tl } from "@/lib/utils";
 import type { Listing } from "@/lib/data";
-import { checkoutAction, getCartListings, previewCouponAction } from "@/app/actions/user";
+import { checkoutAction, getCartListings, previewCouponAction, startShopierCartAction } from "@/app/actions/user";
+import { BuyerFields } from "./DepositForm";
 import { ListingCover } from "./ListingCard";
 
-export function CartView({ user }: { user: { balance: number } | null }) {
+export function CartView({ user, card }: { user: { balance: number } | null; card: { commission: number } | null }) {
   const cart = useCart();
   const router = useRouter();
   const [data, setData] = useState<Record<number, Listing>>({});
@@ -20,6 +21,8 @@ export function CartView({ user }: { user: { balance: number } | null }) {
   const [coupon, setCoupon] = useState<{ code: string; discount: number; label: string } | null>(null);
   const [cErr, setCErr] = useState("");
   const [cBusy, setCBusy] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardBusy, setCardBusy] = useState(false);
   const ids = cart.items.map((i) => i.id).join(",");
 
   useEffect(() => {
@@ -171,8 +174,49 @@ export function CartView({ user }: { user: { balance: number } | null }) {
           <Link href="/giris?next=/sepet" className="btn-ember mt-5 h-12 w-full">Satın almak için giriş yap</Link>
         ) : short > 0 ? (
           <>
-            <p className="mt-4 text-sm text-mute">Bu sipariş için <b className="text-bone">{tl(short)}</b> daha bakiye gerekiyor.</p>
-            <Link href={`/bakiye-yukle?tutar=${Math.ceil(short)}`} className="btn-ember mt-3 h-12 w-full"><Wallet className="h-4 w-4" /> Bakiye yükle</Link>
+            <p className="mt-4 text-sm text-mute">
+              Bu sipariş için <b className="text-bone">{tl(short)}</b> daha gerekiyor.
+              {card && user.balance > 0 && <> Bakiyendeki {tl(user.balance)} de kullanılır, kalanı karttan çekilir.</>}
+            </p>
+            {card ? (
+              cardOpen ? (
+                <form
+                  className="mt-3 grid gap-3 rounded-2xl border border-ember/30 bg-ember/5 p-4"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    setCardBusy(true);
+                    setError("");
+                    const r = await startShopierCartAction(cart.items, coupon?.code ?? null, {
+                      name: String(fd.get("buyer_name") ?? ""),
+                      surname: String(fd.get("buyer_surname") ?? ""),
+                      phone: String(fd.get("buyer_phone") ?? ""),
+                    });
+                    if (r.ok) {
+                      router.push(`/odeme/shopier/${r.id}`);
+                    } else {
+                      setCardBusy(false);
+                      if (r.login) router.push("/giris?next=/sepet");
+                      else setError(r.error);
+                    }
+                  }}
+                >
+                  <div className="[&_.grid]:grid-cols-1 [&_.grid]:gap-3">
+                    <BuyerFields />
+                  </div>
+                  <button disabled={cardBusy} className="btn-ember h-12 w-full text-base">
+                    {cardBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
+                    {tl(Math.round(short * (1 + card.commission / 100) * 100) / 100)} kartla öde
+                  </button>
+                  <p className="flex items-center gap-1.5 text-xs text-mute"><ShieldCheck className="h-3.5 w-3.5 text-mint" /> Shopier güvenli ödeme. Kodların ödeme onaylanınca otomatik teslim edilir.</p>
+                </form>
+              ) : (
+                <button onClick={() => setCardOpen(true)} className="btn-ember mt-3 h-12 w-full text-base">
+                  <CreditCard className="h-5 w-5" /> Kartla öde
+                </button>
+              )
+            ) : null}
+            <Link href={`/bakiye-yukle?tutar=${Math.ceil(short)}`} className={`${card ? "btn-ghost" : "btn-ember"} mt-2 h-12 w-full`}><Wallet className="h-4 w-4" /> Havale / EFT ile bakiye yükle</Link>
           </>
         ) : (
           <button

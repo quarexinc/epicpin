@@ -4,13 +4,14 @@ import { dateTimeTR, tl } from "@/lib/utils";
 import { PageHead } from "@/components/site/Section";
 import { DepositForm } from "@/components/site/DepositForm";
 import { StatusBadge } from "@/components/StatusBadge";
+import { shopierReady } from "@/lib/shopierFlow";
 
 export const metadata = { title: "Bakiye yükle" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ tutar?: string }> }) {
   const u = await requireUser("/bakiye-yukle");
   const { tutar } = await searchParams;
-  const [methods, deposits] = await Promise.all([
+  const [allMethods, deposits, cardOk] = await Promise.all([
     q<{ id: number; name: string; kind: string; account_name: string; account_no: string; instructions: string; commission: number; min_amount: number }>(
       "SELECT * FROM payment_methods WHERE active ORDER BY sort, id",
     ),
@@ -18,7 +19,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
       "SELECT * FROM deposits WHERE user_id = $1 ORDER BY id DESC LIMIT 10",
       [u.id],
     ),
+    shopierReady(),
   ]);
+  const methods = allMethods.filter((m) => m.kind !== "shopier" || cardOk);
   return (
     <>
       <PageHead title="Bakiye yükle" sub="Ödemeni yap, bildirimini gönder. Onaylandığı anda bakiyen hesabında." />

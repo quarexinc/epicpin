@@ -175,6 +175,17 @@ export async function seedDatabase(q: Q) {
 
 /** Sonradan eklenen özelliklerin varsayılan içerikleri (bir kez çalışır). */
 export async function seedExtras(q: Q) {
+  // Shopier kart ödeme yöntemi (bilgiler girilene kadar kapalı)
+  const shp = await q("SELECT 1 FROM settings WHERE key = 'shopier_seeded'");
+  if (!shp.length) {
+    const ex = await q("SELECT 1 FROM payment_methods WHERE kind = 'shopier'");
+    if (!ex.length)
+      await q(
+        "INSERT INTO payment_methods (name, kind, account_name, account_no, instructions, commission, min_amount, active, sort) VALUES ($1,'shopier','','',$2,0,10,false,-1)",
+        ["Kredi / Banka Kartı", "Shopier güvenli ödeme sayfasında kartınla öde, bakiyen anında yüklensin."],
+      );
+    await q("INSERT INTO settings (key, value) VALUES ('shopier_seeded', '1'), ('shopier_website_index', '1'), ('mail_order_codes', 'on') ON CONFLICT (key) DO NOTHING");
+  }
   const done = await q<{ value: string }>("SELECT value FROM settings WHERE key = 'extras_seeded'");
   if (done.length) return;
   const faqs = [

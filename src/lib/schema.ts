@@ -237,3 +237,51 @@ CREATE INDEX IF NOT EXISTS orders_user_idx ON orders(user_id);
 CREATE INDEX IF NOT EXISTS order_items_order_idx ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS listings_cat_idx ON listings(category_id);
 `;
+
+// Shopier ödeme ve OSB (otomatik sipariş bildirimi)
+export const SHOPIER_SQL = `
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS shopier_product_id TEXT;
+
+CREATE TABLE IF NOT EXISTS shopier_payments (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  amount NUMERIC(12,2) NOT NULL,
+  charge NUMERIC(12,2) NOT NULL,
+  items TEXT,
+  coupon_code TEXT,
+  buyer_name TEXT NOT NULL DEFAULT '',
+  buyer_surname TEXT NOT NULL DEFAULT '',
+  buyer_phone TEXT NOT NULL DEFAULT '',
+  random_nr TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  payment_id TEXT,
+  installment TEXT,
+  order_id INT,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  paid_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS shopier_payments_user_idx ON shopier_payments(user_id);
+
+CREATE TABLE IF NOT EXISTS osb_orders (
+  id SERIAL PRIMARY KEY,
+  shopier_order_id TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL DEFAULT '',
+  buyer_name TEXT NOT NULL DEFAULT '',
+  price NUMERIC(12,2),
+  currency TEXT NOT NULL DEFAULT 'TRY',
+  product_ids TEXT NOT NULL DEFAULT '',
+  product_count INT NOT NULL DEFAULT 1,
+  customer_note TEXT NOT NULL DEFAULT '',
+  is_test BOOLEAN NOT NULL DEFAULT false,
+  status TEXT NOT NULL DEFAULT 'pending',
+  delivered_content TEXT,
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  order_id INT,
+  email_sent BOOLEAN NOT NULL DEFAULT false,
+  note TEXT,
+  raw TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`;

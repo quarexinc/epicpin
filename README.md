@@ -59,9 +59,26 @@ npm run dev
 
 `DATABASE_URL` tanımlı değilse proje `.data/` klasöründe gömülü bir Postgres (PGlite) kullanır, kurulum gerekmez. Varsayılan yönetici: `admin@epicpin.com` / `EpicPin2026!`.
 
-## Ödemeler hakkında
+## Ödemeler
 
-Bakiye yükleme şu an **bildirim + onay** mantığıyla çalışır: kullanıcı IBAN/Papara/kripto adresine ödeme yapar, bildirim gönderir; sen panelden onaylayınca bakiye eklenir. Kredi kartıyla anlık ödeme için PayTR, iyzico veya Shopier gibi bir sanal POS hesabı açıp API entegrasyonu eklemek gerekir.
+**Havale / EFT, Papara, kripto:** Kullanıcı ödemeyi yapıp bildirim gönderir, sen panelden onaylayınca bakiye eklenir.
+
+**Kredi / banka kartı (Shopier):** Yönetim panelinde **Shopier ve OSB** sayfasından ayarlanır.
+
+1. Shopier hesabında **Entegrasyonlar > Modül Yönetimi** bölümünden API kullanıcı (API Key) ve API şifre (API Secret) bilgilerini al.
+2. Aynı yerde **Geri dönüş URL** olarak `https://SITE-ADRESIN/api/shopier/callback` adresini kaydet (panel bu adresi kopyalanabilir şekilde gösterir).
+3. Bilgileri panele gir, işlem ücretini belirle ve **Kartla ödemeyi aç**.
+
+Müşteri bakiye yüklerken ya da sepette bakiyesi yetmediğinde **Kartla öde** seçeneğini görür. Ödeme imzası doğrulanınca bakiye anında yüklenir; sepetten ödendiyse sipariş otomatik oluşturulur ve kodlar teslim edilir.
+
+**OSB (Otomatik Sipariş Bildirimi):** Ürünlerini Shopier mağazanda da satıyorsan:
+
+1. Shopier'de **Ek Özellikler > Sipariş Bildirimi** bölümüne `https://SITE-ADRESIN/api/shopier/osb` adresini yaz, verilen kullanıcı adı ve anahtarı panele gir.
+2. Her ilanın düzenleme sayfasında **Shopier ürün numarası** alanına Shopier ürün linkindeki numarayı yaz.
+
+Shopier'den satış geldiğinde kod o ilanın stoğundan otomatik verilir ve alıcıya e-postayla gönderilir. Alıcı sitede aynı e-postayla üyeyse sipariş hesabına da eklenir. Eşleşmeyen ya da stoğu biten satışlar panelde işaretlenir, tek tıkla elle teslim edebilirsin.
+
+**E-posta:** Kodların gönderilmesi için aynı sayfadan SMTP bilgilerini (ör. Gmail uygulama şifresi) gir ve test e-postası gönder.
 
 ## Marka dosyaları
 
