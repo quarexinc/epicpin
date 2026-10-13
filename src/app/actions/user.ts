@@ -1,7 +1,8 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { checkCoupon, performCheckout } from "@/lib/checkout";
-import { createShopierPayment } from "@/lib/shopierFlow";
+import { createCardPayment } from "@/lib/cardFlow";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { one, q, tx } from "@/lib/db";
@@ -82,7 +83,7 @@ export async function createDepositAction(_: FormState, fd: FormData): Promise<F
   const sender = str(fd, "sender_name");
   const m = await one<{ id: number; name: string; min_amount: number; active: boolean }>("SELECT * FROM payment_methods WHERE id = $1", [methodId]);
   if (!m || !m.active) return { error: "Bir ödeme yöntemi seç." };
-  if ((m as any).kind === "shopier") return { error: "Kartla ödeme için Kartla öde butonunu kullan." };
+  if ((m as any).kind === "paytr") return { error: "Kartla ödeme için Kartla öde butonunu kullan." };
   if (!amount || amount <= 0) return { error: "Geçerli bir tutar yaz." };
   if (amount < Number(m.min_amount)) return { error: `Bu yöntem için en az ${Number(m.min_amount).toFixed(2)} ₺ yükleyebilirsin.` };
   if (amount > 100000) return { error: "Tek seferde en fazla 100.000 ₺ yükleyebilirsin." };
@@ -146,32 +147,39 @@ export async function closeTicketAction(fd: FormData) {
   revalidatePath(`/destek/${id}`);
 }
 
-/* ───────────── Shopier ile kartla ödeme ───────────── */
-export async function startShopierDepositAction(_: FormState, fd: FormData): Promise<FormState> {
+/* ───────────── Kartla ödeme (PayTR) ───────────── */
+async function requestContext() {
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for")?.split(",")[0] || h.get("x-real-ip") || "127.0.0.1").trim();
+  const origin = (process.env.NEXT_PUBLIC_SITE_URL || `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host")}`).replace(/\/$/, "");
+  return { ip, origin };
+}
+
+export async function startCardDepositAction(_: FormState, fd: FormData): Promise<FormState> {
   const u = await getUser();
   if (!u) return { error: "Giriş yapmalısın." };
   let id: number;
   try {
-    id = await createShopierPayment(u, {
+    id = await createCardPayment(u, await requestContext(), {
       kind: "deposit",
       amount: num(fd, "amount") ?? 0,
-      buyer: { name: str(fd, "buyer_name"), surname: str(fd, "buyer_surname"), phone: str(fd, "buyer_phone") },
+      buyer: { name: str(fd, "buyer_name"), phone: str(fd, "buyer_phone") },
     });
   } catch (e: any) {
     return { error: e?.message || "Ödeme başlatılamadı." };
   }
-  redirect(`/odeme/shopier/${id}`);
+  redirect(`/odeme/kart/${id}`);
 }
 
-export async function startShopierCartAction(
+export async function startCardCartAction(
   items: { id: number; qty: number }[],
   coupon: string | null,
-  buyer: { name: string; surname: string; phone: string },
+  buyer: { name: string; phone: string },
 ): Promise<{ ok: true; id: number } | { ok: false; error: string; login?: boolean }> {
   const u = await getUser();
   if (!u) return { ok: false, error: "Satın almak için giriş yap.", login: true };
   try {
-    return { ok: true, id: await createShopierPayment(u, { kind: "cart", items, coupon, buyer }) };
+    return { ok: true, id: await createCardPayment(u, await requestContext(), { kind: "cart", items, coupon, buyer }) };
   } catch (e: any) {
     return { ok: false, error: e?.message || "Ödeme başlatılamadı." };
   }

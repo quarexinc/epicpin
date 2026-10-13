@@ -63,22 +63,15 @@ npm run dev
 
 **Havale / EFT, Papara, kripto:** Kullanıcı ödemeyi yapıp bildirim gönderir, sen panelden onaylayınca bakiye eklenir.
 
-**Kredi / banka kartı (Shopier):** Yönetim panelinde **Shopier ve OSB** sayfasından ayarlanır.
+**Kredi / banka kartı (PayTR iFrame API):** Yönetim panelinde **PayTR ve e-posta** sayfasından ayarlanır.
 
-1. Shopier hesabında **Entegrasyonlar > Modül Yönetimi** bölümünden API kullanıcı (API Key) ve API şifre (API Secret) bilgilerini al.
-2. Aynı yerde **Geri dönüş URL** olarak `https://SITE-ADRESIN/api/shopier/callback` adresini kaydet (panel bu adresi kopyalanabilir şekilde gösterir).
-3. Bilgileri panele gir, işlem ücretini belirle ve **Kartla ödemeyi aç**.
+1. PayTR mağaza panelinde **Destek & Kurulum > Entegrasyon Bilgileri** bölümünden Mağaza No, Mağaza Parola ve Mağaza Gizli Anahtar bilgilerini al, panele gir.
+2. **Destek & Kurulum > Ayarlar > Bildirim URL Ayarları** bölümüne `https://SITE-ADRESIN/api/paytr/bildirim` adresini yaz (panel bu adresi kopyalanabilir şekilde gösterir).
+3. Test modunu açıp bir test ödemesi yap; PayTR'deki İşlemler sayfasında "Başarılı" görünüyorsa test modunu kapatıp **Kartla ödemeyi aç**.
 
-Müşteri bakiye yüklerken ya da sepette bakiyesi yetmediğinde **Kartla öde** seçeneğini görür. Ödeme imzası doğrulanınca bakiye anında yüklenir; sepetten ödendiyse sipariş otomatik oluşturulur ve kodlar teslim edilir.
+Müşteri bakiye yüklerken ya da sepette bakiyesi yetmediğinde **Kartla öde** seçeneğini görür; ödeme formu sitenin içinde PayTR iframe'i olarak açılır. PayTR'nin bildirimi imzasıyla doğrulanınca bakiye anında yüklenir; sepetten ödendiyse sipariş otomatik oluşturulur ve kodlar teslim edilir. Taksit, işlem ücreti ve test modu panelden ayarlanır.
 
-**OSB (Otomatik Sipariş Bildirimi):** Ürünlerini Shopier mağazanda da satıyorsan:
-
-1. Shopier'de **Ek Özellikler > Sipariş Bildirimi** bölümüne `https://SITE-ADRESIN/api/shopier/osb` adresini yaz, verilen kullanıcı adı ve anahtarı panele gir.
-2. Her ilanın düzenleme sayfasında **Shopier ürün numarası** alanına Shopier ürün linkindeki numarayı yaz.
-
-Shopier'den satış geldiğinde kod o ilanın stoğundan otomatik verilir ve alıcıya e-postayla gönderilir. Alıcı sitede aynı e-postayla üyeyse sipariş hesabına da eklenir. Eşleşmeyen ya da stoğu biten satışlar panelde işaretlenir, tek tıkla elle teslim edebilirsin.
-
-**E-posta:** Kodların gönderilmesi için aynı sayfadan SMTP bilgilerini (ör. Gmail uygulama şifresi) gir ve test e-postası gönder.
+**E-posta:** Kodların müşteriye e-postayla da gitmesi için aynı sayfadan SMTP bilgilerini (ör. Gmail uygulama şifresi) gir ve test e-postası gönder.
 
 ## Marka dosyaları
 

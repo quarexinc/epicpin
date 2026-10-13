@@ -46,12 +46,6 @@ export function ListingForm({ l, cats }: { l?: Listing | null; cats: Category[] 
               <Field label="Manuel stok adedi" hint="Sadece manuel teslimatlı ürünlerde kullanılır.">
                 <input name="manual_stock" type="number" min={0} className="input" defaultValue={l?.manual_stock ?? 0} />
               </Field>
-              <Field
-                label="Shopier ürün numarası (OSB)"
-                hint="Bu ürünü Shopier mağazanda da satıyorsan, Shopier ürün linkindeki numarayı yaz (ör. shopier.com/12345678 için 12345678). Shopier'den satış gelince kod buradaki stoktan otomatik verilir."
-              >
-                <input name="shopier_product_id" inputMode="numeric" className="input font-mono" defaultValue={(l as any)?.shopier_product_id ?? ""} placeholder="12345678" />
-              </Field>
             </div>
           </Card>
         </div>

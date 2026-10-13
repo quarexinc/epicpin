@@ -1,24 +1,24 @@
 "use client";
 import { useActionState, useEffect, useState } from "react";
 import { Landmark, Smartphone, Bitcoin, CreditCard, Wallet, ShieldCheck, Zap } from "lucide-react";
-import { createDepositAction, startShopierDepositAction } from "@/app/actions/user";
+import { createDepositAction, startCardDepositAction } from "@/app/actions/user";
 import { tl } from "@/lib/utils";
 import { Notice, Submit } from "../FormBits";
 import { CopyButton } from "../CopyButton";
 
 type M = { id: number; name: string; kind: string; account_name: string; account_no: string; instructions: string; commission: number; min_amount: number };
-const KIND_ICON: Record<string, any> = { bank: Landmark, papara: Smartphone, crypto: Bitcoin, card: CreditCard, shopier: CreditCard, other: Wallet };
+const KIND_ICON: Record<string, any> = { bank: Landmark, papara: Smartphone, crypto: Bitcoin, card: CreditCard, paytr: CreditCard, other: Wallet };
 
 /** Kart sahibinin bilgileri: bir kez yazılır, tarayıcıda hatırlanır. */
 export function BuyerFields() {
-  const [b, setB] = useState({ name: "", surname: "", phone: "" });
+  const [b, setB] = useState({ name: "", phone: "" });
   useEffect(() => {
     try {
       const v = JSON.parse(localStorage.getItem("ep_buyer") || "{}");
-      setB((x) => ({ ...x, ...v }));
+      setB({ name: v.name ? `${v.name}${v.surname ? ` ${v.surname}` : ""}` : "", phone: v.phone || "" });
     } catch {}
   }, []);
-  const upd = (k: "name" | "surname" | "phone", v: string) => {
+  const upd = (k: "name" | "phone", v: string) => {
     const n = { ...b, [k]: v };
     setB(n);
     try {
@@ -26,14 +26,10 @@ export function BuyerFields() {
     } catch {}
   };
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2">
       <div>
-        <label className="label" htmlFor="buyer_name">Ad</label>
-        <input id="buyer_name" name="buyer_name" className="input h-12" value={b.name} onChange={(e) => upd("name", e.target.value)} autoComplete="given-name" required />
-      </div>
-      <div>
-        <label className="label" htmlFor="buyer_surname">Soyad</label>
-        <input id="buyer_surname" name="buyer_surname" className="input h-12" value={b.surname} onChange={(e) => upd("surname", e.target.value)} autoComplete="family-name" required />
+        <label className="label" htmlFor="buyer_name">Ad soyad</label>
+        <input id="buyer_name" name="buyer_name" className="input h-12" value={b.name} onChange={(e) => upd("name", e.target.value)} autoComplete="name" placeholder="Kart sahibinin adı soyadı" required />
       </div>
       <div>
         <label className="label" htmlFor="buyer_phone">Telefon</label>
@@ -47,9 +43,9 @@ export function DepositForm({ methods, initialAmount, username }: { methods: M[]
   const [sel, setSel] = useState(methods[0]?.id);
   const [amount, setAmount] = useState(initialAmount && initialAmount > 0 ? String(initialAmount) : "");
   const [state, action] = useActionState(createDepositAction, undefined);
-  const [cardState, cardAction] = useActionState(startShopierDepositAction, undefined);
+  const [cardState, cardAction] = useActionState(startCardDepositAction, undefined);
   const m = methods.find((x) => x.id === sel);
-  const isCard = m?.kind === "shopier";
+  const isCard = m?.kind === "paytr";
   const fee = m && Number(amount) ? (Number(String(amount).replace(",", ".")) * Number(m.commission)) / 100 : 0;
 
   if (!methods.length) return <div className="panel p-10 text-center text-sm text-mute">Şu an aktif ödeme yöntemi yok. Lütfen daha sonra tekrar dene.</div>;
@@ -79,7 +75,7 @@ export function DepositForm({ methods, initialAmount, username }: { methods: M[]
             return (
               <label key={x.id} className={`relative cursor-pointer rounded-2xl border p-4 transition hover:-translate-y-0.5 ${on ? "border-ember bg-ember/10 ring-2 ring-ember/25" : "border-line bg-coal hover:border-mute"}`}>
                 <input type="radio" name="method_id" value={x.id} checked={on} onChange={() => setSel(x.id)} className="sr-only" />
-                {x.kind === "shopier" && <span className="absolute right-3 top-3 rounded-md bg-mint/15 px-1.5 py-0.5 text-[10px] font-bold text-mint">Anında</span>}
+                {x.kind === "paytr" && <span className="absolute right-3 top-3 rounded-md bg-mint/15 px-1.5 py-0.5 text-[10px] font-bold text-mint">Anında</span>}
                 <I className={`h-6 w-6 ${on ? "text-ember" : "text-mute"}`} />
                 <div className="mt-3 font-bold">{x.name}</div>
                 <div className="text-xs text-mute">{Number(x.commission) > 0 ? `%${x.commission} komisyon` : "Komisyonsuz"}, en az {tl(x.min_amount)}</div>
@@ -93,7 +89,7 @@ export function DepositForm({ methods, initialAmount, username }: { methods: M[]
         <>
           <div className="flex items-start gap-3 rounded-2xl border border-mint/30 bg-mint/5 p-4 text-sm text-bone/85">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-mint" />
-            <span>{m?.instructions || "Kart bilgilerini Shopier'in güvenli ödeme sayfasında gireceksin. Ödeme onaylandığı anda bakiyen yüklenir."}</span>
+            <span>{m?.instructions || "Kart bilgilerini PayTR güvenli ödeme ekranında gireceksin. Ödeme onaylandığı anda bakiyen yüklenir."}</span>
           </div>
           {amountField}
           <BuyerFields />

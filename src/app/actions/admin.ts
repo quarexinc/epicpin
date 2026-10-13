@@ -94,18 +94,17 @@ export const saveListing = wrap(async (fd) => {
     Math.max(0, Math.floor(num(fd, "manual_stock") ?? 0)),
     bool(fd, "active"),
     bool(fd, "featured"),
-    str(fd, "shopier_product_id").replace(/\D/g, "") || null,
   ];
   let lid = id;
   if (id) {
     await q(
-      `UPDATE listings SET title=$1, slug=$2, category_id=$3, description=$4, price=$5, old_price=$6, cover_image_id=$7, delivery_type=$8, manual_stock=$9, active=$10, featured=$11, shopier_product_id=$12 WHERE id=$13`,
+      `UPDATE listings SET title=$1, slug=$2, category_id=$3, description=$4, price=$5, old_price=$6, cover_image_id=$7, delivery_type=$8, manual_stock=$9, active=$10, featured=$11 WHERE id=$12`,
       [...vals, id],
     );
   } else {
     const r = await q<{ id: number }>(
-      `INSERT INTO listings (title, slug, category_id, description, price, old_price, cover_image_id, delivery_type, manual_stock, active, featured, shopier_product_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      `INSERT INTO listings (title, slug, category_id, description, price, old_price, cover_image_id, delivery_type, manual_stock, active, featured)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
       vals,
     );
     lid = r[0].id;
@@ -476,39 +475,41 @@ export async function adminRefundItem(fd: FormData) {
   await done(back, "Ürün iade edildi, tutar bakiyeye eklendi", `${res.title}: ${res.amount} ₺${restock ? " (kodlar stoğa geri alındı)" : ""}`);
 }
 
-/* ───────────── Shopier, OSB ve e-posta ───────────── */
-export const saveShopierSettings = wrap(async (fd) => {
+/* ───────────── PayTR ve e-posta ───────────── */
+export const savePaymentSettings = wrap(async (fd) => {
   const set = async (k: string, v: string) =>
     q("INSERT INTO settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [k, v]);
   const section = str(fd, "section");
-  if (section === "payment") {
-    await set("shopier_api_key", str(fd, "shopier_api_key"));
-    if (str(fd, "shopier_api_secret")) await set("shopier_api_secret", str(fd, "shopier_api_secret"));
-    if (bool(fd, "clear_secret")) await set("shopier_api_secret", "");
-    await set("shopier_website_index", String(Math.min(5, Math.max(1, Math.floor(num(fd, "shopier_website_index") ?? 1)))));
+  if (section === "paytr") {
+    const id = str(fd, "paytr_merchant_id").replace(/\D/g, "");
+    await set("paytr_merchant_id", id);
+    for (const k of ["paytr_merchant_key", "paytr_merchant_salt"]) {
+      if (str(fd, k)) await set(k, str(fd, k));
+      if (bool(fd, `clear_${k}`)) await set(k, "");
+    }
+    await set("paytr_test_mode", bool(fd, "paytr_test_mode") ? "on" : "");
+    await set("paytr_debug", bool(fd, "paytr_debug") ? "on" : "");
+    await set("paytr_installment", bool(fd, "paytr_installment") ? "on" : "");
+    const max = Math.floor(num(fd, "paytr_max_installment") ?? 0);
+    await set("paytr_max_installment", String(max >= 2 && max <= 12 ? max : 0));
     const active = bool(fd, "card_active");
-    const [k] = await q<{ value: string }>("SELECT value FROM settings WHERE key = 'shopier_api_secret'");
-    if (active && (!str(fd, "shopier_api_key") || !k?.value)) throw new Error("Kartla ödemeyi açmak için API Key ve API Secret gir.");
+    const keys = await q<{ key: string; value: string }>("SELECT key, value FROM settings WHERE key IN ('paytr_merchant_key','paytr_merchant_salt')");
+    const ok = id && keys.length === 2 && keys.every((k) => k.value);
+    if (active && !ok) throw new Error("Kartla ödemeyi açmak için Mağaza No, Mağaza Parola (key) ve Mağaza Gizli Anahtar (salt) gir.");
     const commission = num(fd, "card_commission") ?? 0;
     if (commission < 0 || commission > 30) throw new Error("İşlem ücreti %0 ile %30 arasında olmalı.");
     const vals = [str(fd, "card_name") || "Kredi / Banka Kartı", commission, num(fd, "card_min") ?? 10, active];
-    const ex = await one("SELECT 1 FROM payment_methods WHERE kind = 'shopier'");
-    if (ex) await q("UPDATE payment_methods SET name=$1, commission=$2, min_amount=$3, active=$4 WHERE kind = 'shopier'", vals);
-    else await q("INSERT INTO payment_methods (name, kind, commission, min_amount, active, sort) VALUES ($1,'shopier',$2,$3,$4,-1)", vals);
-    await done("/admin/shopier", active ? "Shopier kartla ödeme açık" : "Shopier ayarları kaydedildi", "Shopier ödeme ayarları");
-  }
-  if (section === "osb") {
-    await set("osb_username", str(fd, "osb_username"));
-    if (str(fd, "osb_key")) await set("osb_key", str(fd, "osb_key"));
-    if (bool(fd, "clear_osb_key")) await set("osb_key", "");
-    await done("/admin/shopier", "OSB ayarları kaydedildi", "OSB ayarları");
+    const ex = await one("SELECT 1 FROM payment_methods WHERE kind = 'paytr'");
+    if (ex) await q("UPDATE payment_methods SET name=$1, commission=$2, min_amount=$3, active=$4 WHERE kind = 'paytr'", vals);
+    else await q("INSERT INTO payment_methods (name, kind, commission, min_amount, active, sort) VALUES ($1,'paytr',$2,$3,$4,-1)", vals);
+    await done("/admin/paytr", active ? "PayTR kartla ödeme açık" : "PayTR ayarları kaydedildi", "PayTR ayarları");
   }
   if (section === "mail") {
     for (const k of ["smtp_host", "smtp_port", "smtp_user", "mail_from_name", "mail_from_email"]) await set(k, str(fd, k));
     if (str(fd, "smtp_pass")) await set("smtp_pass", str(fd, "smtp_pass"));
     await set("smtp_secure", bool(fd, "smtp_secure") ? "on" : "");
     await set("mail_order_codes", bool(fd, "mail_order_codes") ? "on" : "");
-    await done("/admin/shopier", "E-posta ayarları kaydedildi", "SMTP ayarları");
+    await done("/admin/paytr", "E-posta ayarları kaydedildi", "SMTP ayarları");
   }
   throw new Error("Bilinmeyen bölüm.");
 });
@@ -520,61 +521,38 @@ export async function sendTestMail(fd: FormData) {
     const { sendMail } = await import("@/lib/mail");
     await sendMail(to, "EpicPin test e-postası", "E-posta ayarların çalışıyor", `<p style="color:#d9d1dc">Bu e-postayı görüyorsan SMTP ayarların doğru. Kod teslim e-postaları bu adresten gidecek.</p>`, "SMTP ayarların çalışıyor.");
   } catch (e: any) {
-    fail("/admin/shopier", `Test e-postası gönderilemedi: ${e?.message ?? e}`);
+    fail("/admin/paytr", `Test e-postası gönderilemedi: ${e?.message ?? e}`);
   }
-  await done("/admin/shopier", `Test e-postası ${to} adresine gönderildi`);
+  await done("/admin/paytr", `Test e-postası ${to} adresine gönderildi`);
 }
 
-export async function markShopierPaid(fd: FormData) {
+export async function markCardPaid(fd: FormData) {
   const me = await requireAdmin();
   const id = Number(fd.get("id"));
-  const { completeShopierPayment } = await import("@/lib/shopierFlow");
-  await completeShopierPayment(id, { paymentId: str(fd, "payment_id") || undefined, manualBy: me.username });
-  await done("/admin/shopier", "Ödeme onaylandı ve işlendi", `Shopier ödeme #${id} elle onaylandı`);
+  const { completeCardPayment } = await import("@/lib/cardFlow");
+  await completeCardPayment(id, { manualBy: me.username });
+  await done("/admin/paytr?sekme=odemeler", "Ödeme onaylandı ve işlendi", `Kart ödemesi #${id} elle onaylandı`);
 }
 
-export async function cancelShopierPayment(fd: FormData) {
+export async function cancelCardPayment(fd: FormData) {
   await requireAdmin();
   const id = Number(fd.get("id"));
-  await q("UPDATE shopier_payments SET status = 'failed', note = 'Yönetici iptal etti' WHERE id = $1 AND status = 'pending'", [id]);
-  await done("/admin/shopier", "Ödeme iptal edildi", `Shopier ödeme #${id}`);
+  await q("UPDATE card_payments SET status = 'failed', note = 'Yönetici iptal etti' WHERE id = $1 AND status = 'pending'", [id]);
+  await done("/admin/paytr?sekme=odemeler", "Ödeme iptal edildi", `Kart ödemesi #${id}`);
 }
 
-export async function osbResend(fd: FormData) {
+export async function retryCardOrder(fd: FormData) {
   await requireAdmin();
   const id = Number(fd.get("id"));
-  const o = await one<{ email: string; delivered_content: string | null; shopier_order_id: string }>("SELECT * FROM osb_orders WHERE id = $1", [id]);
-  if (!o?.delivered_content) fail("/admin/shopier?sekme=osb", "Bu siparişte gönderilecek kod yok");
-  const lines = o.delivered_content.split(/\n{2,}/).map((b) => {
-    const [title, ...codes] = b.split("\n");
-    return { title, codes };
-  });
+  const p = await one<any>("SELECT * FROM card_payments WHERE id = $1 AND status = 'paid' AND kind = 'cart' AND order_id IS NULL", [id]);
+  if (!p) fail("/admin/paytr?sekme=odemeler", "Bu ödeme için yeniden denenecek sipariş yok");
+  const { performCheckout } = await import("@/lib/checkout");
   try {
-    const { mailCodes } = await import("@/lib/mail");
-    const ok = await mailCodes(o.email, `Shopier #${o.shopier_order_id}`, lines, "Shopier üzerinden verdiğin sipariş için kodların aşağıda.");
-    if (!ok) fail("/admin/shopier?sekme=osb", "E-posta ayarları eksik ya da alıcı adresi yok");
+    const orderId = await performCheckout(p.user_id, JSON.parse(p.items), p.coupon_code);
+    await q("UPDATE card_payments SET order_id = $1, note = NULL WHERE id = $2", [orderId, id]);
   } catch (e: any) {
     unstable_rethrow(e);
-    fail("/admin/shopier?sekme=osb", `E-posta gönderilemedi: ${e?.message ?? e}`);
+    fail("/admin/paytr?sekme=odemeler", `Sipariş oluşturulamadı: ${e?.message ?? e}`);
   }
-  await q("UPDATE osb_orders SET email_sent = true WHERE id = $1", [id]);
-  await done("/admin/shopier?sekme=osb", "Kodlar tekrar e-postalandı", `OSB #${o.shopier_order_id}`);
-}
-
-export async function osbManualDeliver(fd: FormData) {
-  await requireAdmin();
-  const id = Number(fd.get("id"));
-  const content = str(fd, "content");
-  if (!content) fail("/admin/shopier?sekme=osb", "Teslim edilecek kodu yaz");
-  const o = await one<{ email: string; shopier_order_id: string; delivered_content: string | null }>("SELECT * FROM osb_orders WHERE id = $1", [id]);
-  if (!o) fail("/admin/shopier?sekme=osb", "Kayıt bulunamadı");
-  const block = `${str(fd, "title") || "Teslimat"}\n${content}`;
-  const all = [o.delivered_content, block].filter(Boolean).join("\n\n");
-  let sent = false;
-  try {
-    const { mailCodes } = await import("@/lib/mail");
-    sent = await mailCodes(o.email, `Shopier #${o.shopier_order_id}`, [{ title: str(fd, "title") || "Teslimat", codes: content.split("\n") }], "Shopier siparişin teslim edildi.");
-  } catch {}
-  await q("UPDATE osb_orders SET status = 'delivered', delivered_content = $1, email_sent = email_sent OR $2 WHERE id = $3", [all, sent, id]);
-  await done("/admin/shopier?sekme=osb", sent ? "Teslim edildi ve e-postalandı" : "Teslim edildi (e-posta gönderilemedi, alıcıya elle ilet)", `OSB #${o.shopier_order_id}`);
+  await done("/admin/paytr?sekme=odemeler", "Sipariş oluşturuldu", `Kart ödemesi #${id}`);
 }

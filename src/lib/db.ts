@@ -1,8 +1,8 @@
 import "server-only";
-import { MIGRATIONS_SQL, SCHEMA_SQL, SHOPIER_SQL } from "./schema";
+import { MIGRATIONS_SQL, PAYMENT_SQL, SCHEMA_SQL } from "./schema";
 import { seedDatabase, seedExtras } from "./seed";
 
-const SCHEMA_VERSION = "4";
+const SCHEMA_VERSION = "5";
 
 type Row = Record<string, any>;
 export type Q = <T = Row>(text: string, params?: unknown[]) => Promise<T[]>;
@@ -98,7 +98,7 @@ async function driver(): Promise<Driver> {
       await d.transaction(async (q) => {
         // Aynı anda açılan sunucular şemayı birlikte kurmaya çalışmasın
         await q("SELECT pg_advisory_xact_lock(7340211)");
-        for (const stmt of (SCHEMA_SQL + MIGRATIONS_SQL + SHOPIER_SQL).split(";").map((x) => x.trim()).filter(Boolean)) await q(stmt);
+        for (const stmt of (SCHEMA_SQL + MIGRATIONS_SQL + PAYMENT_SQL).split(";").map((x) => x.trim()).filter(Boolean)) await q(stmt);
         const r = await q<{ c: number }>("SELECT COUNT(*)::int AS c FROM users");
         if (r[0].c === 0) await seedDatabase(q);
         await seedExtras(q);

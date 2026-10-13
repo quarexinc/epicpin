@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { one } from "@/lib/db";
 import { tl } from "@/lib/utils";
 import { ClearCart } from "@/components/site/ClearCart";
+import { BreakOutOfFrame, AutoRefresh } from "@/components/site/PaymentHelpers";
 
 export const metadata = { title: "Ödeme sonucu", robots: { index: false } };
 
@@ -11,10 +12,11 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const id = Number((await params).id) || 0;
   const { hata } = await searchParams;
   const u = await requireUser(`/odeme/sonuc/${id}`);
-  const p = await one<any>("SELECT * FROM shopier_payments WHERE id = $1 AND user_id = $2", [id, u.id]);
+  const p = await one<any>("SELECT * FROM card_payments WHERE id = $1 AND user_id = $2", [id, u.id]);
 
   const box = (icon: React.ReactNode, title: string, text: React.ReactNode, actions: React.ReactNode, tone: string) => (
     <div className="container-ep grid place-items-center py-20">
+      <BreakOutOfFrame />
       <div className={`panel w-full max-w-md p-8 text-center ${tone}`} style={{ animation: "popIn .5s cubic-bezier(.2,1.3,.3,1)" }}>
         {icon}
         <h1 className="h-display mt-5 text-2xl">{title}</h1>
@@ -59,12 +61,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     );
   }
 
-  if (p.status === "failed" || hata)
+  if (p.status === "failed")
     return box(
       <CircleX className="mx-auto h-14 w-14 text-plasma" />,
       "Ödeme tamamlanmadı",
       <>
-        {hata === "imza" ? "Ödeme doğrulanamadı." : p.note || "Kartından çekim yapılmadı."} Tekrar deneyebilir ya da başka bir yöntem seçebilirsin.
+          {p.note || "Kartından çekim yapılmadı."} Tekrar deneyebilir ya da başka bir yöntem seçebilirsin.
       </>,
       <>
         <Link href={p.kind === "cart" ? "/sepet" : "/bakiye-yukle"} className="btn-ember"><RotateCcw className="h-4 w-4" /> Tekrar dene</Link>
@@ -75,11 +77,16 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   return box(
     <Hourglass className="mx-auto h-14 w-14 animate-pulse text-blaze" />,
-    "Ödeme bekleniyor",
-    "Shopier'den henüz onay gelmedi. Ödemeyi tamamladıysan birkaç saniye sonra sayfayı yenile; kartından çekim yapıldı ama bakiyen gelmediyse destek ekibine yaz.",
+    hata ? "Ödeme tamamlanamadı gibi görünüyor" : "Ödemen onaylanıyor",
+    <>
+      <AutoRefresh />
+      {hata
+        ? "Kartından çekim yapıldıysa sonuç birkaç saniye içinde burada görünür. Çekim yapılmadıysa tekrar deneyebilirsin."
+        : "Banka onayı birkaç saniye içinde gelir, bu sayfa kendiliğinden güncellenir. Kartından çekim yapıldı ama bakiyen gelmediyse destek ekibine yaz."}
+    </>,
     <>
       <Link href={`/odeme/sonuc/${p.id}`} className="btn-ember"><RotateCcw className="h-4 w-4" /> Yenile</Link>
-      <Link href={`/odeme/shopier/${p.id}`} className="btn-ghost">Ödeme sayfasına dön</Link>
+      {hata && <Link href={p.kind === "cart" ? "/sepet" : "/bakiye-yukle"} className="btn-ghost">Tekrar dene</Link>}
       <Link href="/destek" className="btn-ghost">Destek al</Link>
     </>,
     "",

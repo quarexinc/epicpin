@@ -6,7 +6,7 @@ import { Loader2, Minus, Plus, ShoppingCart, Trash2, Wallet, Zap, CircleAlert, T
 import { useCart } from "@/lib/cart";
 import { tl } from "@/lib/utils";
 import type { Listing } from "@/lib/data";
-import { checkoutAction, getCartListings, previewCouponAction, startShopierCartAction } from "@/app/actions/user";
+import { checkoutAction, getCartListings, previewCouponAction, startCardCartAction } from "@/app/actions/user";
 import { BuyerFields } from "./DepositForm";
 import { ListingCover } from "./ListingCard";
 
@@ -187,13 +187,12 @@ export function CartView({ user, card }: { user: { balance: number } | null; car
                     const fd = new FormData(e.currentTarget);
                     setCardBusy(true);
                     setError("");
-                    const r = await startShopierCartAction(cart.items, coupon?.code ?? null, {
+                    const r = await startCardCartAction(cart.items, coupon?.code ?? null, {
                       name: String(fd.get("buyer_name") ?? ""),
-                      surname: String(fd.get("buyer_surname") ?? ""),
                       phone: String(fd.get("buyer_phone") ?? ""),
                     });
                     if (r.ok) {
-                      router.push(`/odeme/shopier/${r.id}`);
+                      router.push(`/odeme/kart/${r.id}`);
                     } else {
                       setCardBusy(false);
                       if (r.login) router.push("/giris?next=/sepet");
@@ -208,7 +207,7 @@ export function CartView({ user, card }: { user: { balance: number } | null; car
                     {cardBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
                     {tl(Math.round(short * (1 + card.commission / 100) * 100) / 100)} kartla öde
                   </button>
-                  <p className="flex items-center gap-1.5 text-xs text-mute"><ShieldCheck className="h-3.5 w-3.5 text-mint" /> Shopier güvenli ödeme. Kodların ödeme onaylanınca otomatik teslim edilir.</p>
+                  <p className="flex items-center gap-1.5 text-xs text-mute"><ShieldCheck className="h-3.5 w-3.5 text-mint" /> PayTR güvenli ödeme. Kodların ödeme onaylanınca otomatik teslim edilir.</p>
                 </form>
               ) : (
                 <button onClick={() => setCardOpen(true)} className="btn-ember mt-3 h-12 w-full text-base">
