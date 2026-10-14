@@ -23,7 +23,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     <>
       <Link href="/admin/siparisler" className="mb-3 inline-flex items-center gap-1.5 text-sm text-mute hover:text-bone"><ArrowLeft className="h-4 w-4" /> Siparişler</Link>
       <AdminTitle title={`Sipariş #${o.id}`} sub={dateTimeTR(o.created_at)} />
-      <div className="grid items-start gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-4">
           {items.map((i) => (
             <Card key={i.id}>

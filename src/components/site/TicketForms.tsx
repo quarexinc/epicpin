@@ -1,7 +1,7 @@
 "use client";
 import { useActionState } from "react";
 import { createTicketAction, replyTicketAction } from "@/app/actions/user";
-import { Notice, Submit } from "../FormBits";
+import { ActionForm, Notice, Submit } from "../FormBits";
 
 export const TOPICS: [string, string][] = [
   ["siparis", "Sipariş / teslimat"],
@@ -14,7 +14,7 @@ export const TOPICS: [string, string][] = [
 export function NewTicketForm({ orders, defaultOrder }: { orders: { id: number; label: string }[]; defaultOrder?: number }) {
   const [state, action] = useActionState(createTicketAction, undefined);
   return (
-    <form action={action} className="grid gap-4">
+    <ActionForm action={action} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="topic">Konu başlığı</label>
@@ -40,18 +40,18 @@ export function NewTicketForm({ orders, defaultOrder }: { orders: { id: number; 
       </div>
       <Notice state={state} />
       <Submit className="btn-ember w-fit">Talebi gönder</Submit>
-    </form>
+    </ActionForm>
   );
 }
 
 export function ReplyForm({ ticketId }: { ticketId: number }) {
   const [state, action] = useActionState(replyTicketAction, undefined);
   return (
-    <form action={action} className="grid gap-3" key={state?.ok ? Date.now() : "f"}>
+    <ActionForm action={action} className="grid gap-3" key={state?.ok ? Date.now() : "f"}>
       <input type="hidden" name="ticket_id" value={ticketId} />
       <textarea name="message" rows={3} className="input" placeholder="Yanıtını yaz…" required />
       <Notice state={state?.error ? state : undefined} />
       <Submit className="btn-ember w-fit">Gönder</Submit>
-    </form>
+    </ActionForm>
   );
 }

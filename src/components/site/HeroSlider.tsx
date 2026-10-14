@@ -124,7 +124,7 @@ export function HeroSlider({ banners }: { banners: B[] }) {
                     {b.label}
                   </span>
                 )}
-                <h2 key={on ? `on${tick}` : "off"} className="h-display text-balance text-[2rem] leading-[1.05] sm:text-5xl">
+                <h2 key={on ? `on${tick}` : "off"} className="h-display text-balance text-[1.7rem] leading-[1.06] sm:text-5xl">
                   {b.title.split(" ").map((w, k) => (
                     <span key={k} className="inline-block overflow-hidden pb-1 align-bottom">
                       <span className="inline-block" style={on ? { animation: `heroWord .7s cubic-bezier(.2,.9,.2,1) ${0.25 + k * 0.06}s both` } : undefined}>

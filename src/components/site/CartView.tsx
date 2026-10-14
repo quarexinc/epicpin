@@ -83,7 +83,7 @@ export function CartView({ user, card }: { user: { balance: number } | null; car
     );
 
   return (
-    <div className="container-ep mt-8 grid items-start gap-6 lg:grid-cols-[1fr_380px]">
+    <div className="container-ep mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="grid gap-3">
         {lines.map(({ id, qty, l }) => (
           <div key={id} className="panel flex items-center gap-4 p-3 sm:p-4">

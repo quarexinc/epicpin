@@ -30,6 +30,12 @@ export async function POST(req: Request) {
   if (!p) return text("OK"); // Bu siteye ait olmayan ya da silinmiş sipariş: PayTR tekrar denemesin
   if (p.status === "pending") {
     if (b.status === "success") {
+      // Tahsil edilen tutar sipariş tutarından az olamaz (taksit farkıyla fazla olabilir)
+      const [row] = await q<{ charge: number }>("SELECT charge FROM card_payments WHERE id = $1", [p.id]);
+      if (Number(b.total_amount) + 1 < Math.round(Number(row.charge) * 100)) {
+        await failCardPayment(p.id, undefined, `Tutar uyuşmazlığı: PayTR ${Number(b.total_amount) / 100} ₺ bildirdi, beklenen ${row.charge} ₺. PayTR panelinden kontrol et.`);
+        return text("OK");
+      }
       await completeCardPayment(p.id, { totalAmount: Number(b.total_amount) / 100, paymentType: b.payment_type });
     } else {
       await failCardPayment(p.id, b.failed_reason_code, b.failed_reason_msg);

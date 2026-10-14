@@ -5,7 +5,8 @@ import { q, one } from "./db";
 
 /** Herkese açık veriler önbellekte tutulur; yönetici bir şeyi değiştirince bu etiketler temizlenir. */
 export const TAGS = ["settings", "categories", "listings", "banners", "announcements", "posts", "faqs", "stats"] as const;
-const opts = (tag: string) => ({ tags: [tag], revalidate: 600 });
+// Etiketle anında temizlenir; yine de en geç birkaç dakikada bir tazelenir
+const opts = (tag: string) => ({ tags: [tag], revalidate: tag === "settings" || tag === "announcements" ? 120 : 600 });
 
 export type Settings = Record<string, string>;
 

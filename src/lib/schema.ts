@@ -272,3 +272,18 @@ CREATE TABLE IF NOT EXISTS card_payments (
 );
 CREATE INDEX IF NOT EXISTS card_payments_user_idx ON card_payments(user_id);
 `;
+
+// Oturum sürümü (şifre değişince eski oturumlar kapanır) ve şifre sıfırlama
+export const HARDENING_SQL = `
+ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INT NOT NULL DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  token_hash TEXT PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS users_email_lower_idx ON users (lower(email));
+CREATE INDEX IF NOT EXISTS users_username_lower_idx ON users (lower(username));
+`;

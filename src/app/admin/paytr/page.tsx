@@ -67,7 +67,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
           </div>
 
           <Card title="1. PayTR kartla ödeme (iFrame API)">
-            <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <AForm action={savePaymentSettings} submit="PayTR ayarlarını kaydet">
                 <input type="hidden" name="section" value="paytr" />
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -112,7 +112,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
           </Card>
 
           <Card title="2. E-posta (kodların müşteriye gönderilmesi)">
-            <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <AForm action={savePaymentSettings} submit="E-posta ayarlarını kaydet">
                 <input type="hidden" name="section" value="mail" />
                 <div className="grid gap-4 sm:grid-cols-2">

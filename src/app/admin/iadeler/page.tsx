@@ -18,7 +18,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
   return (
     <>
       <AdminTitle title="İade talepleri" sub="Onaylanan iadede ürün tutarı üyenin bakiyesine geri yüklenir." />
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {[["pending", "Bekleyen"], ["approved", "Onaylanan"], ["rejected", "Reddedilen"], ["all", "Tümü"]].map(([k, l]) => (
           <Link key={k} href={`/admin/iadeler?durum=${k}`} className={`rounded-full border px-4 py-1.5 text-sm font-semibold ${durum === k ? "border-ember bg-ember text-void" : "border-line bg-ash"}`}>{l}</Link>
         ))}

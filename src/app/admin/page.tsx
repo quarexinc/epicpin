@@ -6,10 +6,10 @@ import { AdminTitle, Card } from "@/components/admin/Fields";
 
 export default async function Dashboard() {
   const s = await one<any>(`SELECT
-    (SELECT COALESCE(SUM(total),0) FROM orders WHERE created_at >= date_trunc('day', now())) AS rev_today,
+    (SELECT COALESCE(SUM(total),0) FROM orders WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Istanbul') AT TIME ZONE 'Europe/Istanbul')) AS rev_today,
     (SELECT COALESCE(SUM(total),0) FROM orders WHERE created_at >= now() - interval '30 days') AS rev_30,
     (SELECT COUNT(*)::int FROM orders) AS orders,
-    (SELECT COUNT(*)::int FROM orders WHERE created_at >= date_trunc('day', now())) AS orders_today,
+    (SELECT COUNT(*)::int FROM orders WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Istanbul') AT TIME ZONE 'Europe/Istanbul')) AS orders_today,
     (SELECT COUNT(*)::int FROM users) AS users,
     (SELECT COUNT(*)::int FROM users WHERE created_at >= now() - interval '7 days') AS users_7,
     (SELECT COUNT(*)::int FROM deposits WHERE status = 'pending') AS deposits,
@@ -19,8 +19,8 @@ export default async function Dashboard() {
   const [recent, low, days, top] = await Promise.all([
     q<any>(`SELECT o.id, o.total, o.created_at, u.username, string_agg(oi.title, ', ') AS items FROM orders o JOIN users u ON u.id = o.user_id JOIN order_items oi ON oi.order_id = o.id GROUP BY o.id, u.username ORDER BY o.id DESC LIMIT 8`),
     q<any>(`SELECT l.id, l.title, (SELECT COUNT(*)::int FROM stock_codes s WHERE s.listing_id = l.id AND s.order_item_id IS NULL) AS stock FROM listings l WHERE l.active AND l.delivery_type = 'auto' ORDER BY stock ASC LIMIT 6`),
-    q<any>(`SELECT to_char(d, 'DD.MM') AS day, COALESCE((SELECT SUM(total) FROM orders WHERE created_at::date = d::date),0) AS total
-            FROM generate_series(current_date - 13, current_date, interval '1 day') d ORDER BY d`),
+    q<any>(`SELECT to_char(d, 'DD.MM') AS day, COALESCE((SELECT SUM(total) FROM orders WHERE (created_at AT TIME ZONE 'Europe/Istanbul')::date = d::date),0) AS total
+            FROM generate_series((now() AT TIME ZONE 'Europe/Istanbul')::date - 13, (now() AT TIME ZONE 'Europe/Istanbul')::date, interval '1 day') d ORDER BY d`),
     q<any>(`SELECT oi.listing_id, oi.title, SUM(oi.quantity)::int AS qty, SUM(oi.unit_price * oi.quantity) AS revenue
             FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.created_at >= now() - interval '30 days' AND oi.status <> 'refunded'
             GROUP BY oi.listing_id, oi.title ORDER BY qty DESC LIMIT 5`),
@@ -65,7 +65,7 @@ export default async function Dashboard() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[2fr_1fr]">
         <Card title="Son 14 gün ciro">
-          <div className="flex h-48 items-end gap-1.5">
+          <div className="-mx-1 overflow-x-auto px-1"><div className="flex h-48 min-w-[520px] items-end gap-1.5">
             {days.map((d: any) => (
               <div key={d.day} className="group flex h-full flex-1 flex-col justify-end">
                 <div className="relative w-full rounded-t-md bg-gradient-to-t from-ember to-blaze transition group-hover:brightness-125" style={{ height: `${Math.max(2, (Number(d.total) / max) * 100)}%` }}>
@@ -74,7 +74,7 @@ export default async function Dashboard() {
                 <span className="mt-1.5 text-center text-[10px] text-mute">{d.day}</span>
               </div>
             ))}
-          </div>
+          </div></div>
         </Card>
         <Card title="Stoğu azalanlar" actions={<Link href="/admin/ilanlar" className="text-xs font-semibold text-ember">İlanlar</Link>}>
           <ul className="grid gap-2">
@@ -98,9 +98,9 @@ export default async function Dashboard() {
               <li key={i}>
                 <Link href={t.listing_id ? `/admin/ilanlar/${t.listing_id}` : "/admin/ilanlar"} className="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-smoke">
                   <span className="grid h-7 w-7 place-items-center rounded-lg bg-ember/15 font-display text-xs font-bold text-ember">{i + 1}</span>
-                  <span className="flex-1 truncate font-semibold">{t.title}</span>
+                  <span className="min-w-0 flex-1 truncate font-semibold">{t.title}</span>
                   <span className="text-mute">{t.qty} adet</span>
-                  <span className="w-28 text-right font-display font-bold">{tl(t.revenue)}</span>
+                  <span className="shrink-0 text-right font-display font-bold sm:w-28">{tl(t.revenue)}</span>
                 </Link>
               </li>
             ))}

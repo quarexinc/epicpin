@@ -21,8 +21,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <Link href={p.kind === "cart" ? "/sepet" : "/bakiye-yukle"} className="mb-4 inline-flex items-center gap-1.5 text-sm text-mute hover:text-bone">
         <ArrowLeft className="h-4 w-4" /> Geri dön
       </Link>
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="panel overflow-hidden p-2 sm:p-4">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="panel overflow-hidden p-1.5 sm:p-4">
           {expired ? (
             <div className="grid place-items-center p-12 text-center">
               <h1 className="h-display text-2xl">Ödeme süresi doldu</h1>
@@ -33,7 +33,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <PaytrFrame src={iframeUrl(p.token)} resizer={`${PAYTR_BASE}/js/iframeResizer.min.js`} />
           )}
         </div>
-        <aside className="panel grid gap-4 p-6 lg:sticky lg:top-24">
+        <aside className="panel order-first grid gap-4 p-5 sm:p-6 lg:order-none lg:sticky lg:top-24">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-ember/15 text-ember"><Lock className="h-5 w-5" /></span>
             <div>

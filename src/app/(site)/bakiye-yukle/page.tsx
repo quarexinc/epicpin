@@ -25,7 +25,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   return (
     <>
       <PageHead title="Bakiye yükle" sub="Ödemeni yap, bildirimini gönder. Onaylandığı anda bakiyen hesabında." />
-      <div className="container-ep mt-8 grid items-start gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="container-ep mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <DepositForm methods={methods} initialAmount={tutar ? Number(tutar) : undefined} username={u.username} />
         <div className="grid gap-4">
           <div className="rounded-2xl bg-gradient-to-br from-blaze to-ember p-5 text-void">

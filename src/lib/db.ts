@@ -1,8 +1,9 @@
 import "server-only";
-import { MIGRATIONS_SQL, PAYMENT_SQL, SCHEMA_SQL } from "./schema";
+import { HARDENING_SQL, MIGRATIONS_SQL, PAYMENT_SQL, SCHEMA_SQL } from "./schema";
 import { seedDatabase, seedExtras } from "./seed";
+import { databaseUrl, isServerless } from "./env";
 
-const SCHEMA_VERSION = "5";
+const SCHEMA_VERSION = "6";
 
 type Row = Record<string, any>;
 export type Q = <T = Row>(text: string, params?: unknown[]) => Promise<T[]>;
@@ -14,21 +15,65 @@ interface Driver {
   kind: "postgres" | "pglite";
 }
 
+export class DbNotConfiguredError extends Error {
+  constructor() {
+    super("Veritabanı bağlı değil. Vercel > Storage bölümünden bir Postgres (Neon) veritabanı bağlayıp yeniden deploy et.");
+  }
+}
+
 const g = globalThis as unknown as { __epicDriver?: Promise<Driver>; __epicReady?: Promise<void> };
 
+/**
+ * Bağlantı adresini sürücüye uygun hale getirir. Neon'un adreslerindeki channel_binding gibi
+ * libpq'ya özgü parametreler sürücüde "unrecognized configuration parameter" hatası verdiği için atılır;
+ * SSL ayarı sslmode'dan okunur.
+ */
+export function normalizeDbUrl(raw: string) {
+  const u = new URL(raw.replace(/^postgresql:/i, "postgres:"));
+  const sslmode = (u.searchParams.get("sslmode") || "").toLowerCase();
+  const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(u.hostname);
+  const ssl = sslmode === "disable" || (local && sslmode !== "require") ? false : ("require" as const);
+  u.search = "";
+  return { url: u.toString(), ssl };
+}
+
+const TRANSIENT = new Set([
+  "ECONNRESET", "ETIMEDOUT", "EPIPE", "ECONNREFUSED", "EAI_AGAIN",
+  "CONNECTION_CLOSED", "CONNECTION_ENDED", "CONNECTION_DESTROYED", "CONNECT_TIMEOUT",
+  "57P01", "57P02", "57P03", "08000", "08001", "08003", "08006",
+]);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function createDriver(): Promise<Driver> {
-  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (url) {
+  const raw = databaseUrl();
+  if (raw) {
     const postgres = (await import("postgres")).default;
+    const { url, ssl } = normalizeDbUrl(raw);
     const sql = postgres(url, {
-      max: 5,
+      max: isServerless() ? 3 : 8,
       idle_timeout: 20,
-      prepare: false,
-      connection: { TimeZone: "Europe/Istanbul" },
-      ssl: url.includes("localhost") || url.includes("sslmode=disable") ? false : "require",
-      types: { numeric: { to: 1700, from: [1700], serialize: (x: unknown) => String(x), parse: (x: string) => Number(x) } } as any,
+      max_lifetime: 60 * 30,
+      connect_timeout: 15,
+      prepare: false, // havuzlu (pgbouncer) bağlantılarla uyumlu
+      ssl,
+      onnotice: () => {},
+      // NUMERIC ve BIGINT değerleri metin yerine sayı olarak gelsin (para ve sayaçlar)
+      types: {
+        numeric: { to: 1700, from: [1700], serialize: (x: unknown) => String(x), parse: (x: string) => Number(x) },
+        int8: { to: 20, from: [20], serialize: (x: unknown) => String(x), parse: (x: string) => Number(x) },
+      } as any,
     });
-    const query: Q = async (text, params = []) => (await sql.unsafe(text, params as any[])) as any;
+    // Bağlantı kopması / uyuyan veritabanının uyanması gibi geçici hatalarda tekrar dener
+    const query: Q = async (text, params = []) => {
+      for (let i = 0; ; i++) {
+        try {
+          return (await sql.unsafe(text, params as any[])) as any;
+        } catch (e: any) {
+          if (i >= 2 || !TRANSIENT.has(e?.code)) throw e;
+          await sleep(250 * (i + 1));
+        }
+      }
+    };
     return {
       kind: "postgres",
       query,
@@ -36,19 +81,18 @@ async function createDriver(): Promise<Driver> {
         await sql.unsafe(s);
       },
       transaction: async (fn) =>
-        (await sql.begin(async (tx) => fn(async (text, params = []) => (await tx.unsafe(text, params as any[])) as any))) as any,
+        (await sql.begin(async (t) => fn(async (text, params = []) => (await t.unsafe(text, params as any[])) as any))) as any,
     };
   }
-  // Yerel geliştirme / veritabanı bağlanmamışsa gömülü Postgres (PGlite)
+  // Sunucusuz ortamda (Vercel) gömülü veritabanı her kopyada ayrı ve geçici olur; kullanıcılar kaybolur.
+  if (isServerless()) throw new DbNotConfiguredError();
+
+  // Yerel geliştirme: gömülü Postgres (PGlite), veriler .data klasöründe kalıcı
   const { PGlite } = await import("@electric-sql/pglite");
-  let dir: string | undefined;
-  if (!process.env.VERCEL) {
-    const { mkdirSync } = await import("fs");
-    mkdirSync("./.data", { recursive: true });
-    dir = "./.data/pglite";
-  }
-  if (process.env.VERCEL) console.warn("[EpicPin] DATABASE_URL tanımlı değil: veriler geçici bellekte tutuluyor.");
-  const db = new PGlite(dir);
+  const { mkdirSync } = await import("fs");
+  mkdirSync("./.data", { recursive: true });
+  const db = new PGlite("./.data/pglite");
+  await db.exec("SET TIME ZONE 'Europe/Istanbul'");
   const fixNum = (rows: Row[], fields: { name: string; dataTypeID: number }[]) => {
     const nums = fields.filter((f) => f.dataTypeID === 1700 || f.dataTypeID === 20).map((f) => f.name);
     if (nums.length) for (const r of rows) for (const n of nums) if (r[n] != null) r[n] = Number(r[n]);
@@ -68,9 +112,9 @@ async function createDriver(): Promise<Driver> {
     transaction: <T,>(fn: (q: Q) => Promise<T>) => {
       // PGlite tek bağlantılı: işlemleri sıraya al
       const run = chain.then(() =>
-        db.transaction(async (tx) =>
+        db.transaction(async (t) =>
           fn(async (text, params = []) => {
-            const r = await tx.query<Row>(text, params as any[]);
+            const r = await t.query<Row>(text, params as any[]);
             return fixNum(r.rows, r.fields) as any;
           }),
         ),
@@ -85,20 +129,30 @@ async function createDriver(): Promise<Driver> {
 }
 
 async function driver(): Promise<Driver> {
-  if (!g.__epicDriver) g.__epicDriver = createDriver();
+  if (!g.__epicDriver)
+    g.__epicDriver = createDriver().catch((e) => {
+      g.__epicDriver = undefined;
+      throw e;
+    });
   const d = await g.__epicDriver;
   if (!g.__epicReady) {
     g.__epicReady = (async () => {
-      if (d.kind === "pglite") await d.exec("SET TIME ZONE 'Europe/Istanbul'");
       // Şema güncelse soğuk açılışta tek sorguyla geç
-      try {
+      const [t] = await d.query<{ ok: boolean }>("SELECT to_regclass('public.settings') IS NOT NULL AS ok");
+      if (t.ok) {
         const v = await d.query<{ value: string }>("SELECT value FROM settings WHERE key = 'schema_version'");
         if (v[0]?.value === SCHEMA_VERSION) return;
-      } catch {}
+      }
       await d.transaction(async (q) => {
         // Aynı anda açılan sunucular şemayı birlikte kurmaya çalışmasın
         await q("SELECT pg_advisory_xact_lock(7340211)");
-        for (const stmt of (SCHEMA_SQL + MIGRATIONS_SQL + PAYMENT_SQL).split(";").map((x) => x.trim()).filter(Boolean)) await q(stmt);
+        // Başka bir sunucu kopyası kurulumu az önce bitirmiş olabilir (hata üretmeden kontrol et)
+        const [t] = await q<{ ok: boolean }>("SELECT to_regclass('public.settings') IS NOT NULL AS ok");
+        if (t.ok) {
+          const v = await q<{ value: string }>("SELECT value FROM settings WHERE key = 'schema_version'");
+          if (v[0]?.value === SCHEMA_VERSION) return;
+        }
+        for (const stmt of (SCHEMA_SQL + MIGRATIONS_SQL + PAYMENT_SQL + HARDENING_SQL).split(";").map((x) => x.trim()).filter(Boolean)) await q(stmt);
         const r = await q<{ c: number }>("SELECT COUNT(*)::int AS c FROM users");
         if (r[0].c === 0) await seedDatabase(q);
         await seedExtras(q);

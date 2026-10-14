@@ -19,7 +19,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
       <AdminTitle title="Ödeme yöntemleri" sub="Bakiye yükleme sayfasında görünen hesaplar. Kullanıcı ödeme yapıp bildirim gönderir, sen Bakiye talepleri ekranından onaylarsın.">
         {m && <Link href="/admin/odeme" className="btn-ember"><Plus className="h-4 w-4" /> Yeni yöntem</Link>}
       </AdminTitle>
-      <div className="grid items-start gap-5 lg:grid-cols-[1fr_420px]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div className="panel divide-y divide-line">
           {rows.map((x) => (
             <div key={x.id} className={`flex items-start gap-3 p-4 ${x.active ? "" : "opacity-50"}`}>

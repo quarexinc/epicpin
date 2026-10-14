@@ -26,7 +26,7 @@ export function Toggle({ name, label, defaultChecked, hint }: { name: string; la
 
 export function Card({ title, children, actions, className = "" }: { title?: string; children: React.ReactNode; actions?: React.ReactNode; className?: string }) {
   return (
-    <div className={`panel ${className}`}>
+    <div className={`panel min-w-0 ${className}`}>
       {(title || actions) && (
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
           {title && <h2 className="font-display text-[15px] font-bold">{title}</h2>}

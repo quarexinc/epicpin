@@ -150,7 +150,8 @@ export async function closeTicketAction(fd: FormData) {
 /* ───────────── Kartla ödeme (PayTR) ───────────── */
 async function requestContext() {
   const h = await headers();
-  const ip = (h.get("x-forwarded-for")?.split(",")[0] || h.get("x-real-ip") || "127.0.0.1").trim();
+  // Vercel müşterinin gerçek IP'sini x-real-ip ile verir; diğer barındırmalarda x-forwarded-for'un ilk adresi kullanılır
+  const ip = (h.get("x-real-ip") || h.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1").trim();
   const origin = (process.env.NEXT_PUBLIC_SITE_URL || `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host")}`).replace(/\/$/, "");
   return { ip, origin };
 }

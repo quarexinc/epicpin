@@ -20,7 +20,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
       <AdminTitle title="Bannerlar" sub="Ana sayfadaki kayan kampanya alanı. Bannerin tamamı tıklanabilir ve seçtiğin sayfaya gider. Görsel yüklemezsen renk temasıyla otomatik sahne çizilir.">
         {b && <Link href="/admin/bannerlar" className="btn-ember"><Plus className="h-4 w-4" /> Yeni banner</Link>}
       </AdminTitle>
-      <div className="grid items-start gap-5 lg:grid-cols-[1fr_420px]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div className="grid gap-3">
           {rows.map((x) => {
             const t = THEMES[x.theme] ?? THEMES.ember;

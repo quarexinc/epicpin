@@ -39,12 +39,17 @@ Oyun e-pin ve dijital kod mağazası. Next.js 15, PostgreSQL ve Tailwind CSS ile
 
    | Değişken | Açıklama |
    | --- | --- |
-   | `AUTH_SECRET` | Uzun, rastgele bir metin (ör. 40+ karakter). Oturumları şifreler. |
+   | `AUTH_SECRET` | (Önerilir) En az 16 karakterlik rastgele bir metin. Oturumları şifreler; girilmezse veritabanı adresinden güvenli bir anahtar türetilir. |
    | `ADMIN_EMAIL` | İlk yönetici hesabının e-postası |
    | `ADMIN_PASSWORD` | İlk yönetici hesabının şifresi |
    | `NEXT_PUBLIC_SITE_URL` | (İsteğe bağlı) Alan adın, ör. `https://epicpin.com` |
 
-5. **Deployments** sekmesinden son yüklemeyi **Redeploy** et.
+5. **Deployments** sekmesinden son yüklemeyi **Redeploy** et. Ortam değişkenleri ve veritabanı ancak yeniden yüklemeden sonra devreye girer.
+6. Kontrol: `https://SITE-ADRESIN/api/health` adresini aç. `"database":"ok"` görüyorsan kurulum tamamdır.
+
+> **Veritabanı zorunlu.** Vercel her isteği farklı bir sunucu kopyasında çalıştırır; veritabanı olmadan üyelikler ve oturumlar saklanamaz (hesap açan müşteri bir sonraki sayfada çıkış yapmış görünür). Bu yüzden veritabanı bağlı değilse site bozuk çalışmak yerine kurulum ekranı gösterir.
+>
+> Canlıda (veritabanı bağlıyken) örnek hesap, sahte kodlar ve örnek IBAN'lar oluşturulmaz. Panelde ilk iş yönetici şifreni değiştir, ödeme yöntemlerine kendi bilgilerini gir ve ilanlara stok kodu ekle.
 
 İlk açılışta tablolar ve örnek içerik (kategoriler, ilanlar, bannerlar, blog yazıları) otomatik oluşturulur. Yönetici hesabıyla giriş yapıp `/admin` adresinden her şeyi düzenleyebilirsin.
 

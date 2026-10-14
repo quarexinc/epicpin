@@ -2,7 +2,7 @@
 import { useActionState, useState } from "react";
 import { Undo2 } from "lucide-react";
 import { requestRefundAction } from "@/app/actions/user";
-import { Notice, Submit } from "../FormBits";
+import { ActionForm, Notice, Submit } from "../FormBits";
 
 export function RefundForm({ itemId }: { itemId: number }) {
   const [open, setOpen] = useState(false);
@@ -15,7 +15,7 @@ export function RefundForm({ itemId }: { itemId: number }) {
       </button>
     );
   return (
-    <form action={action} className="mt-4 grid gap-3 rounded-xl border border-line bg-coal p-4">
+    <ActionForm action={action} className="mt-4 grid gap-3 rounded-xl border border-line bg-coal p-4">
       <input type="hidden" name="item_id" value={itemId} />
       <label className="label" htmlFor={`r${itemId}`}>İade nedeni</label>
       <textarea id={`r${itemId}`} name="reason" rows={3} className="input" placeholder="Örn. kod hatalı görünüyor, kullanılmadı." required minLength={10} />
@@ -25,6 +25,6 @@ export function RefundForm({ itemId }: { itemId: number }) {
         <Submit className="btn-danger">Talebi gönder</Submit>
         <button type="button" onClick={() => setOpen(false)} className="btn-ghost">Vazgeç</button>
       </div>
-    </form>
+    </ActionForm>
   );
 }

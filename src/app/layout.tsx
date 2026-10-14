@@ -4,9 +4,11 @@ import { getSettings } from "@/lib/data";
 import { img } from "@/lib/utils";
 import { Suspense } from "react";
 import { RevealObserver, ScrollState, TopLoader } from "@/components/Motion";
+import { dbConfigured } from "@/lib/env";
+import { SetupScreen } from "@/components/SetupScreen";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const s = await getSettings();
+  const s = dbConfigured() ? await getSettings().catch(() => ({}) as Record<string, string>) : ({} as Record<string, string>);
   const name = s.site_name || "EpicPin";
   const fav = img(s.favicon_image_id);
   const base =
@@ -21,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: "#0A090C" };
+export const viewport: Viewport = { themeColor: "#0A090C", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -42,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Suspense>
         <RevealObserver />
         <ScrollState />
-        {children}
+        {dbConfigured() ? children : <SetupScreen />}
       </body>
     </html>
   );

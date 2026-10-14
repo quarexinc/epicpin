@@ -13,7 +13,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
   return (
     <>
       <AdminTitle title="Destek talepleri" />
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {[["acik", "Yanıt bekleyen"], ["kapali", "Kapalı"], ["tum", "Tümü"]].map(([k, l]) => (
           <Link key={k} href={`/admin/destek?durum=${k}`} className={`rounded-full border px-4 py-1.5 text-sm font-semibold ${durum === k ? "border-ember bg-ember text-void" : "border-line bg-ash"}`}>{l}</Link>
         ))}

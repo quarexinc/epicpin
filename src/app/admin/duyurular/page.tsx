@@ -20,7 +20,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
       <AdminTitle title="Duyurular" sub="Üst şeritte kayan yazı olarak ve Duyurular sayfasında görünür.">
         {a && <Link href="/admin/duyurular" className="btn-ember"><Plus className="h-4 w-4" /> Yeni duyuru</Link>}
       </AdminTitle>
-      <div className="grid items-start gap-5 lg:grid-cols-[1fr_420px]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div className="panel divide-y divide-line">
           {rows.map((x) => (
             <div key={x.id} className={`flex items-start gap-3 p-4 ${x.active ? "" : "opacity-50"}`}>

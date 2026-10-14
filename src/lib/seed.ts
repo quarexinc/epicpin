@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { Q } from "./db";
 import { slugify } from "./utils";
+import { isProduction } from "./env";
 
 function code(prefix: string) {
   const c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -16,11 +17,14 @@ export async function seedDatabase(q: Q) {
     adminEmail.toLowerCase(),
     await bcrypt.hash(adminPass, 10),
   ]);
-  await q("INSERT INTO users (username, email, password_hash, role, balance) VALUES ($1,$2,$3,'user',500)", [
-    "demooyuncu",
-    "demo@epicpin.com",
-    await bcrypt.hash("demo1234", 10),
-  ]);
+  // Canlı ortamda örnek hesap, sahte kod ve sahte satış sayısı oluşturulmaz
+  const demo = !isProduction();
+  if (demo)
+    await q("INSERT INTO users (username, email, password_hash, role, balance) VALUES ($1,$2,$3,'user',500)", [
+      "demooyuncu",
+      "demo@epicpin.com",
+      await bcrypt.hash("demo1234", 10),
+    ]);
 
   const settings: Record<string, string> = {
     site_name: "EpicPin",
@@ -91,7 +95,7 @@ export async function seedDatabase(q: Q) {
     ["Brawl Stars 170 Elmas", "Brawl Stars", 349.9, 389.9, "BS", false],
   ];
   for (const [title, cat, price, old, prefix, featured] of items) {
-    const sold = Math.floor(Math.random() * 900) + 40;
+    const sold = demo ? Math.floor(Math.random() * 900) + 40 : 0;
     const r = await q<{ id: number }>(
       `INSERT INTO listings (title, slug, category_id, description, price, old_price, delivery_type, featured, sold_count)
        VALUES ($1,$2,$3,$4,$5,$6,'auto',$7,$8) RETURNING id`,
@@ -106,7 +110,7 @@ export async function seedDatabase(q: Q) {
         sold,
       ],
     );
-    for (let i = 0; i < 25; i++) await q("INSERT INTO stock_codes (listing_id, code) VALUES ($1,$2)", [r[0].id, code(prefix)]);
+    if (demo) for (let i = 0; i < 25; i++) await q("INSERT INTO stock_codes (listing_id, code) VALUES ($1,$2)", [r[0].id, code(prefix)]);
   }
   // Manuel teslimatlı örnek
   await q(
@@ -141,8 +145,8 @@ export async function seedDatabase(q: Q) {
   ];
   for (let i = 0; i < methods.length; i++)
     await q(
-      "INSERT INTO payment_methods (name, kind, account_name, account_no, instructions, commission, min_amount, sort) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-      [...methods[i], i],
+      "INSERT INTO payment_methods (name, kind, account_name, account_no, instructions, commission, min_amount, sort, active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+      [...methods[i], i, demo], // canlıda örnek IBAN'lar kapalı başlar, yönetici kendi bilgileriyle açar
     );
 
   const anns = [
@@ -175,6 +179,15 @@ export async function seedDatabase(q: Q) {
 
 /** Sonradan eklenen özelliklerin varsayılan içerikleri (bir kez çalışır). */
 export async function seedExtras(q: Q) {
+  // Canlı ortamda örnek verilerin güvenlik açığına dönüşmemesi için bir kez temizlik:
+  // örnek üye kapatılır, satılmamış sahte kodlar silinir, örnek IBAN/Papara/kripto yöntemleri kapatılır.
+  if (isProduction()) {
+    const cleaned = await q("SELECT 1 FROM settings WHERE key = 'prod_cleanup_v1'");
+    if (!cleaned.length) {
+      await cleanDemoData(q);
+      await q("INSERT INTO settings (key, value) VALUES ('prod_cleanup_v1', '1') ON CONFLICT (key) DO NOTHING");
+    }
+  }
   // Kartla ödeme yöntemi (PayTR bilgileri girilene kadar kapalı)
   const card = await q("SELECT 1 FROM settings WHERE key = 'paytr_seeded'");
   if (!card.length) {
@@ -196,7 +209,7 @@ export async function seedExtras(q: Q) {
     ["İndirim kodunu nereye yazacağım?", "Sepet sayfasındaki İndirim kodu alanına yaz ve Uygula'ya bas. İndirim toplam tutardan düşülür."],
   ];
   for (let i = 0; i < faqs.length; i++) await q("INSERT INTO faqs (question, answer, sort) VALUES ($1,$2,$3)", [...faqs[i], i]);
-  await q("INSERT INTO coupons (code, kind, value, min_total, max_uses) VALUES ('EPIC10', 'percent', 10, 100, 500) ON CONFLICT (code) DO NOTHING");
+  await q("INSERT INTO coupons (code, kind, value, min_total, max_uses, active) VALUES ('EPIC10', 'percent', 10, 100, 500, $1) ON CONFLICT (code) DO NOTHING", [!isProduction()]);
   const defaults: Record<string, string> = {
     maintenance_on: "",
     maintenance_text: "Kısa bir bakım çalışması yapıyoruz. Birazdan buradayız.",
@@ -209,4 +222,19 @@ export async function seedExtras(q: Q) {
   };
   for (const [k, v] of Object.entries(defaults)) await q("INSERT INTO settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO NOTHING", [k, v]);
   await q("INSERT INTO settings (key, value) VALUES ('extras_seeded', '1') ON CONFLICT (key) DO NOTHING");
+}
+
+/** Kurulumla gelen örnek verileri temizler (yönetim panelinden de çalıştırılabilir). */
+export async function cleanDemoData(q: Q) {
+  const r1 = await q("UPDATE users SET banned = true, balance = 0 WHERE lower(email) = 'demo@epicpin.com' AND role <> 'admin' RETURNING id");
+  const r2 = await q(
+    `DELETE FROM stock_codes WHERE order_item_id IS NULL
+       AND code ~ '^(VLR|PUBG|LOL|RBX|STM|MLB|FF|GPL|CS|DSC|RZR|BS)-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$' RETURNING id`,
+  );
+  const r3 = await q(
+    `UPDATE payment_methods SET active = false
+     WHERE account_no IN ('TR00 0000 0000 0000 0000 0000 00', '1234567890', 'TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') RETURNING id`,
+  );
+  await q("UPDATE coupons SET active = false WHERE code = 'EPIC10' AND used_count = 0");
+  return { users: r1.length, codes: r2.length, methods: r3.length };
 }

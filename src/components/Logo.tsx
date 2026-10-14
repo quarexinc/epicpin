@@ -1,7 +1,11 @@
 import clsx from "clsx";
+import { useId } from "react";
 
 /** EpicPin işareti: yan kenarları çentikli bir e-pin kuponu ve içinden geçen şimşek. */
-export function LogoMark({ className, id = "ep" }: { className?: string; id?: string }) {
+export function LogoMark({ className, id: idProp }: { className?: string; id?: string }) {
+  // Her işaretin kendi gradyan kimliği olmalı; gizli bir kopyadaki gradyana bağlanırsa logo görünmez olur
+  const auto = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const id = idProp ?? `ep${auto}`;
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
       <defs>
@@ -30,11 +34,11 @@ export function Logo({ className, logoUrl, size = "md" }: { className?: string; 
   }
   return (
     <span className={clsx("inline-flex items-center gap-2 select-none", className)}>
-      <LogoMark className={size === "lg" ? "h-14 w-14" : size === "sm" ? "h-8 w-8" : "h-10 w-10"} />
+      <LogoMark className={size === "lg" ? "h-14 w-14" : size === "sm" ? "h-8 w-8" : "h-8 w-8 sm:h-10 sm:w-10"} />
       <span
         className={clsx(
           "font-display font-extrabold tracking-[-0.04em] leading-none",
-          size === "lg" ? "text-4xl" : size === "sm" ? "text-lg" : "text-[1.6rem]",
+          size === "lg" ? "text-4xl" : size === "sm" ? "text-lg" : "text-[1.3rem] sm:text-[1.6rem]",
         )}
       >
         <span className="text-bone">Epic</span>

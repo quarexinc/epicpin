@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, LayoutDashboard, LifeBuoy, Package, Undo2, Wallet, Receipt } from "lucide-react";
+import { Heart, LayoutDashboard, LifeBuoy, Package, Undo2, Wallet, Receipt, Settings } from "lucide-react";
 
 const ITEMS = [
   ["/hesabim", "Genel bakış", LayoutDashboard],
@@ -11,6 +11,7 @@ const ITEMS = [
   ["/hesabim/bakiye", "Bakiye hareketleri", Receipt],
   ["/bakiye-yukle", "Bakiye yükle", Wallet],
   ["/destek", "Destek taleplerim", LifeBuoy],
+  ["/hesabim/ayarlar", "Hesap ayarları", Settings],
 ] as const;
 
 export function AccountNav() {

@@ -29,7 +29,7 @@ export async function ListingBrowser({ base, categoryId, q, sort, activeSlug }: 
     return `${base}${str ? `?${str}` : ""}`;
   };
   return (
-    <div className="container-ep mt-8 grid gap-8 lg:grid-cols-[240px_1fr]">
+    <div className="container-ep mt-8 grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
       <aside className="hidden lg:block">
         <div className="sticky top-24 panel p-2">
           <div className="px-3 pb-2 pt-2 text-xs font-semibold text-mute">Kategoriler</div>
@@ -49,14 +49,14 @@ export async function ListingBrowser({ base, categoryId, q, sort, activeSlug }: 
           ))}
         </div>
       </aside>
-      <div>
-        <div className="mb-5 flex flex-wrap items-center gap-2">
+      <div className="min-w-0">
+        <div className="mb-5 flex min-w-0 flex-wrap items-center gap-2">
           {q && (
             <span className="mr-2 text-sm text-mute">
               “<span className="font-semibold text-bone">{q}</span>” için {items.length} sonuç
             </span>
           )}
-          <div className="no-scrollbar flex gap-2 overflow-x-auto">
+          <div className="no-scrollbar -mx-4 flex w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 sm:mx-0 sm:w-full sm:px-0">
             {SORTS.map(([k, label]) => (
               <Link
                 key={k}

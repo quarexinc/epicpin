@@ -19,7 +19,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <AdminTitle title={`#${t.id} ${t.subject}`} sub={`${t.username} (${t.email})`}>
         <StatusBadge status={t.status} />
       </AdminTitle>
-      <div className="grid items-start gap-5 lg:grid-cols-[1fr_360px]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-3">
           {msgs.map((m) => (
             <div key={m.id} className={`rounded-2xl p-4 text-sm ${m.is_staff ? "ml-10 border border-ember/30 bg-ember/10" : "mr-10 bg-ash"}`}>

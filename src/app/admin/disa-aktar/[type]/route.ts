@@ -13,12 +13,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ type: s
   const { type } = await params;
   let rows: Record<string, unknown>[] = [];
   if (type === "siparisler")
-    rows = await q(`SELECT o.id AS siparis, to_char(o.created_at, 'YYYY-MM-DD HH24:MI') AS tarih, u.username AS uye, u.email, oi.title AS urun, oi.quantity AS adet,
+    rows = await q(`SELECT o.id AS siparis, to_char(o.created_at AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM-DD HH24:MI') AS tarih, u.username AS uye, u.email, oi.title AS urun, oi.quantity AS adet,
       oi.unit_price AS birim_fiyat, oi.unit_price * oi.quantity AS tutar, o.discount AS siparis_indirimi, o.coupon_code AS kupon, oi.status AS durum
       FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN users u ON u.id = o.user_id ORDER BY o.id DESC, oi.id`);
   else if (type === "uyeler")
     rows = await q(`SELECT u.id, u.username AS kullanici_adi, u.email, u.role AS yetki, u.balance AS bakiye, u.banned AS askida,
-      to_char(u.created_at, 'YYYY-MM-DD HH24:MI') AS kayit, (SELECT COUNT(*)::int FROM orders o WHERE o.user_id = u.id) AS siparis_sayisi,
+      to_char(u.created_at AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM-DD HH24:MI') AS kayit, (SELECT COUNT(*)::int FROM orders o WHERE o.user_id = u.id) AS siparis_sayisi,
       (SELECT COALESCE(SUM(total),0) FROM orders o WHERE o.user_id = u.id) AS toplam_harcama FROM users u ORDER BY u.id`);
   else return new Response("Bulunamadı", { status: 404 });
   const head = rows[0] ? Object.keys(rows[0]) : [];

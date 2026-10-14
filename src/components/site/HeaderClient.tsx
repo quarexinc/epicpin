@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown, LayoutGrid, LogOut, Menu, Package, Search, ShoppingCart, User, Wallet, X, Heart, LifeBuoy, LayoutDashboard, Undo2,
+  ChevronDown, LayoutGrid, LogOut, Menu, Package, Search, ShoppingCart, User, Wallet, X, Heart, LifeBuoy, LayoutDashboard, Undo2, Settings,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { tl } from "@/lib/utils";
@@ -30,7 +30,7 @@ export function SearchBox() {
         value={v}
         onChange={(e) => setV(e.target.value)}
         placeholder="Oyun, e-pin veya kod ara: Valorant, UC, Robux…"
-        className="h-11 w-full rounded-xl border border-line bg-void/70 pl-10 pr-4 text-sm outline-none transition placeholder:text-mute/70 focus:border-ember focus:ring-2 focus:ring-ember/20"
+        className="h-11 w-full rounded-xl border border-line bg-void/70 pl-10 pr-4 text-base outline-none sm:text-sm transition placeholder:text-mute/70 focus:border-ember focus:ring-2 focus:ring-ember/20"
         aria-label="Ara"
       />
     </form>
@@ -88,11 +88,14 @@ export function UserMenu({ user }: { user: { username: string; role: string; bal
 
   if (!user)
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <Link href="/giris" className="grid h-10 w-10 place-items-center rounded-xl border border-line text-bone sm:hidden" aria-label="Giriş yap">
+          <User className="h-5 w-5" />
+        </Link>
         <Link href="/giris" className="btn-ghost hidden sm:inline-flex">
           Giriş yap
         </Link>
-        <Link href="/kayit" className="btn-ember px-3 sm:px-4">
+        <Link href="/kayit" className="btn-ember px-3 max-[374px]:px-2.5 max-[374px]:text-xs sm:px-4">
           Kayıt ol
         </Link>
       </div>
@@ -127,11 +130,16 @@ export function UserMenu({ user }: { user: { username: string; role: string; bal
             <MenuItem href="/hesabim/iadeler" icon={<Undo2 className="h-4 w-4" />}>İade taleplerim</MenuItem>
             <MenuItem href="/bakiye-yukle" icon={<Wallet className="h-4 w-4" />}>Bakiye yükle</MenuItem>
             <MenuItem href="/destek" icon={<LifeBuoy className="h-4 w-4" />}>Destek taleplerim</MenuItem>
-            <form action={logoutAction}>
-              <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-plasma hover:bg-plasma/10">
-                <LogOut className="h-4 w-4" /> Çıkış yap
-              </button>
-            </form>
+            <MenuItem href="/hesabim/ayarlar" icon={<Settings className="h-4 w-4" />}>Hesap ayarları</MenuItem>
+            <button
+              onClick={async () => {
+                await logoutAction();
+                window.location.assign("/");
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-plasma hover:bg-plasma/10"
+            >
+              <LogOut className="h-4 w-4" /> Çıkış yap
+            </button>
           </div>
         </div>
       )}

@@ -62,11 +62,15 @@ export function CategoryMarquee({ cats }: { cats: { name: string; slug: string; 
 }
 
 export function StatsStrip({ stats }: { stats: { products: number; categories: number; sold: number; delivered: number } }) {
-  const items: [number, string, string, string?][] = [
-    [stats.products, "Ürün", "/ilanlar"],
-    [stats.categories, "Oyun ve platform", "/kategoriler"],
-    [stats.sold, "Satış", "/ilanlar?sirala=populer", "+"],
-  ];
+  const items: [number, string, string, string?][] = (
+    [
+      [stats.products, "Ürün", "/ilanlar"],
+      [stats.categories, "Oyun ve platform", "/kategoriler"],
+      [stats.sold, "Satış", "/ilanlar?sirala=populer", "+"],
+    ] as [number, string, string, string?][]
+  ).filter(([n]) => n > 0);
+  if (items.length < 3) items.push([24, "Saat destek", "/destek", "/7"]);
+  if (items.length < 3) items.push([10, "Saniyede teslimat", "/ilanlar", " sn"]);
   return (
     <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
       {items.map(([n, label, href, suf]) => (

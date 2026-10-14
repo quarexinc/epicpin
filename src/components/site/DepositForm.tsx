@@ -3,7 +3,7 @@ import { useActionState, useEffect, useState } from "react";
 import { Landmark, Smartphone, Bitcoin, CreditCard, Wallet, ShieldCheck, Zap } from "lucide-react";
 import { createDepositAction, startCardDepositAction } from "@/app/actions/user";
 import { tl } from "@/lib/utils";
-import { Notice, Submit } from "../FormBits";
+import { ActionForm, Notice, Submit } from "../FormBits";
 import { CopyButton } from "../CopyButton";
 
 type M = { id: number; name: string; kind: string; account_name: string; account_no: string; instructions: string; commission: number; min_amount: number };
@@ -65,7 +65,7 @@ export function DepositForm({ methods, initialAmount, username }: { methods: M[]
   );
 
   return (
-    <form action={isCard ? cardAction : action} className="panel grid gap-6 p-6 sm:p-8">
+    <ActionForm action={isCard ? cardAction : action} className="panel grid gap-6 p-6 sm:p-8">
       <fieldset>
         <legend className="mb-3 font-display font-bold">Ödeme yöntemi</legend>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -147,6 +147,6 @@ export function DepositForm({ methods, initialAmount, username }: { methods: M[]
           <Submit className="btn-ember h-12 text-base">Ödemeyi yaptım, bildir</Submit>
         </>
       )}
-    </form>
+    </ActionForm>
   );
 }

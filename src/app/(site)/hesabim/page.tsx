@@ -5,8 +5,9 @@ import { dateTimeTR, tl } from "@/lib/utils";
 
 export const metadata = { title: "Hesabım" };
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ sifre?: string }> }) {
   const u = await requireUser("/hesabim");
+  const { sifre } = await searchParams;
   const [stats, orders, tickets] = await Promise.all([
     one<{ c: number; s: number }>("SELECT COUNT(*)::int AS c, COALESCE(SUM(total),0) AS s FROM orders WHERE user_id = $1", [u.id]),
     q<{ id: number; total: number; created_at: string; items: string }>(
@@ -16,7 +17,8 @@ export default async function Page() {
     one<{ c: number }>("SELECT COUNT(*)::int AS c FROM tickets WHERE user_id = $1 AND status <> 'closed'", [u.id]),
   ]);
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+      {sifre && <div className="rounded-2xl border border-mint/30 bg-mint/10 p-4 text-sm font-semibold text-mint">Yeni şifren kaydedildi, giriş yaptın.</div>}
       <div className="grid gap-3 sm:grid-cols-3">
         <Link href="/bakiye-yukle" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blaze to-ember p-5 text-void transition hover:-translate-y-1">
           <div className="text-sm font-semibold opacity-80">Bakiyen</div>

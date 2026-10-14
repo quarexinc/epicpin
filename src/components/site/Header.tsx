@@ -81,7 +81,7 @@ export async function Header() {
 
       {/* Ana başlık */}
       <header className="sticky top-0 z-40 border-b border-line bg-coal/85 backdrop-blur-xl transition-[background-color,box-shadow] duration-300 [html[data-scrolled]_&]:bg-coal/95 [html[data-scrolled]_&]:shadow-[0_12px_40px_-12px_rgba(0,0,0,.9)]">
-        <div className="container-ep flex h-[72px] items-center gap-3 transition-[height] duration-300 md:gap-6 [html[data-scrolled]_&]:h-[62px]">
+        <div className="container-ep flex h-[72px] items-center gap-2 transition-[height] duration-300 md:gap-6 [html[data-scrolled]_&]:h-[62px]">
           <MobileMenu cats={cats.map((c) => ({ name: c.name, slug: c.slug, icon: c.icon, color: c.color }))} isAdmin={user?.role === "admin"} loggedIn={!!user} />
           <Link href="/" aria-label="EpicPin ana sayfa" className="shrink-0">
             <Logo logoUrl={logoUrl} />

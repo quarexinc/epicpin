@@ -18,7 +18,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
       <AdminTitle title="Kategoriler" sub="Oyunlar ve platformlar. Sıra numarası küçük olan önce görünür.">
         {c && <Link href="/admin/kategoriler" className="btn-ember"><Plus className="h-4 w-4" /> Yeni kategori</Link>}
       </AdminTitle>
-      <div className="grid items-start gap-5 lg:grid-cols-[1fr_420px]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div className="panel divide-y divide-line">
           {cats.map((x) => (
             <div key={x.id} className={`flex items-center gap-3 p-3 pl-4 ${x.active ? "" : "opacity-50"} ${c?.id === x.id ? "bg-ember/5" : ""}`}>

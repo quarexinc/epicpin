@@ -48,7 +48,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       )}
       <Link
         href="/destek"
-        className="ep-float group fixed bottom-5 right-5 z-40 flex h-14 items-center gap-2 rounded-full bg-gradient-to-br from-blaze to-ember pl-4 pr-4 font-bold text-void shadow-ember transition-all hover:scale-105 hover:pr-5"
+        className="ep-float group fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-40 flex h-14 items-center gap-2 rounded-full bg-gradient-to-br from-blaze to-ember pl-4 pr-4 font-bold text-void shadow-ember transition-all hover:scale-105 hover:pr-5"
         aria-label="Canlı destek"
       >
         <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-ember/40 [animation-duration:2.4s]" />

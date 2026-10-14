@@ -17,10 +17,10 @@ export function SectionHead({ title, sub, href, linkText = "Tümünü gör", ext
         </h2>
         {sub && <p className="mt-1.5 text-sm text-mute">{sub}</p>}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {extra}
         {href && (
-          <Link href={href} className="group inline-flex items-center gap-1 rounded-full border border-line px-4 py-2 text-sm font-semibold text-bone/85 transition hover:border-ember hover:text-ember">
+          <Link href={href} className="group inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-line px-4 py-2 text-sm font-semibold text-bone/85 transition hover:border-ember hover:text-ember">
             {linkText}
             <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </Link>

@@ -1,7 +1,7 @@
 "use server";
 import bcrypt from "bcryptjs";
 import { redirect, unstable_rethrow } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { createSession, requireAdmin } from "@/lib/auth";
 import { bust } from "@/lib/bust";
 import { one, q, tx } from "@/lib/db";
 import { deleteImage, saveImage } from "@/lib/images";
@@ -307,11 +307,16 @@ export const updateUser = wrap(async (fd) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Geçerli bir e-posta yaz.");
   const ex = await one("SELECT 1 FROM users WHERE lower(email) = $1 AND id <> $2", [email, id]);
   if (ex) throw new Error("Bu e-posta başka bir üyede kayıtlı.");
-  await q("UPDATE users SET role = $1, banned = $2, email = $3 WHERE id = $4", [role, banned, email, id]);
   const pw = str(fd, "password");
+  if (pw && pw.length < 6) throw new Error("Yeni şifre en az 6 karakter olmalı.");
+  await q("UPDATE users SET role = $1, banned = $2, email = $3 WHERE id = $4", [role, banned, email, id]);
   if (pw) {
-    if (pw.length < 6) throw new Error("Yeni şifre en az 6 karakter olmalı.");
-    await q("UPDATE users SET password_hash = $1 WHERE id = $2", [await bcrypt.hash(pw, 10), id]);
+    // Şifre değişince üyenin açık oturumları kapanır
+    await q("UPDATE users SET password_hash = $1, session_version = session_version + 1 WHERE id = $2", [await bcrypt.hash(pw, 10), id]);
+    if (id === me.id) {
+      const [u] = await q<{ session_version: number }>("SELECT session_version FROM users WHERE id = $1", [id]);
+      await createSession(id, u.session_version);
+    }
   }
   await done(`/admin/uyeler/${id}`, "Üye güncellendi");
 });
@@ -555,4 +560,11 @@ export async function retryCardOrder(fd: FormData) {
     fail("/admin/paytr?sekme=odemeler", `Sipariş oluşturulamadı: ${e?.message ?? e}`);
   }
   await done("/admin/paytr?sekme=odemeler", "Sipariş oluşturuldu", `Kart ödemesi #${id}`);
+}
+
+export async function cleanDemoAction() {
+  await requireAdmin();
+  const { cleanDemoData } = await import("@/lib/seed");
+  const r = await cleanDemoData(q);
+  await done("/admin", `Örnek veriler temizlendi: ${r.codes} örnek kod silindi, ${r.methods} örnek ödeme yöntemi kapatıldı`);
 }

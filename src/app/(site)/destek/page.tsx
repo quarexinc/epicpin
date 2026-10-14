@@ -28,7 +28,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   return (
     <>
       <PageHead title="Destek merkezi" sub="Ekibimiz 7/24 burada. Sorununu yaz, en kısa sürede dönelim." />
-      <div className="container-ep mt-8 grid items-start gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="container-ep mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="grid gap-6">
           <div className="panel p-6 sm:p-8">
             <h2 className="mb-5 flex items-center gap-2 font-display text-lg font-bold"><MessageCircle className="h-5 w-5 text-ember" /> Yeni destek talebi</h2>

@@ -44,6 +44,12 @@ export function paytrConfig(s: Record<string, string>): PaytrConfig | null {
 }
 
 /** PayTR sipariş numarası: yalnızca harf ve rakam. */
+/** İstemci IP'si: PayTR en fazla 39 karakter kabul eder. */
+export function cleanIp(ip: string) {
+  const v = ip.trim().replace(/^::ffff:/, "");
+  return v.length > 0 && v.length <= 39 ? v : "127.0.0.1";
+}
+
 export function merchantOid(paymentId: number) {
   return `EP${paymentId}T${Date.now().toString(36).toUpperCase()}`;
 }
@@ -72,16 +78,20 @@ export type TokenRequest = {
 /** 1. Adım: ödeme token'ı alır. Hata olursa açıklamayla birlikte fırlatır. */
 export async function getIframeToken(cfg: PaytrConfig, r: TokenRequest): Promise<string> {
   const paymentAmount = String(Math.round(r.amount * 100));
-  const userBasket = Buffer.from(JSON.stringify(r.basket), "utf8").toString("base64");
+  // PayTR örnekleriyle aynı biçim: Türkçe karakterler \uXXXX olarak kaçışlanır
+  const basketJson = JSON.stringify(r.basket).replace(/[\u0080-\uffff]/g, (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+  const userBasket = Buffer.from(basketJson, "utf8").toString("base64");
   const noInstallment = cfg.noInstallment ? "1" : "0";
   const maxInstallment = String(cfg.maxInstallment);
   const currency = "TL";
   const testMode = cfg.testMode ? "1" : "0";
   const email = asciiEmail(r.email);
-  const hashStr = cfg.merchantId + r.userIp + r.oid + email + paymentAmount + userBasket + noInstallment + maxInstallment + currency + testMode;
+  const userIp = cleanIp(r.userIp);
+  if (!(r.amount > 0)) throw new Error("Ödeme tutarı geçersiz.");
+  const hashStr = cfg.merchantId + userIp + r.oid + email + paymentAmount + userBasket + noInstallment + maxInstallment + currency + testMode;
   const body = new URLSearchParams({
     merchant_id: cfg.merchantId,
-    user_ip: r.userIp,
+    user_ip: userIp,
     merchant_oid: r.oid,
     email,
     payment_amount: paymentAmount,

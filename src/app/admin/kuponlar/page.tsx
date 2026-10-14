@@ -20,7 +20,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
       <AdminTitle title="Kuponlar" sub="Müşterilerin sepette kullanacağı indirim kodları.">
         {c && <Link href="/admin/kuponlar" className="btn-ember"><Plus className="h-4 w-4" /> Yeni kupon</Link>}
       </AdminTitle>
-      <div className="grid items-start gap-5 lg:grid-cols-[1fr_400px]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className="panel divide-y divide-line">
           {rows.map((x) => {
             const expired = x.expires_at && new Date(x.expires_at) < now;
